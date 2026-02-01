@@ -38,7 +38,7 @@ function App() {
           </p>
           <div className="flex justify-center gap-2">
             <Badge variant="secondary">Tauri v2</Badge>
-            <Badge variant="secondary">React 18</Badge>
+            <Badge variant="secondary">React 19</Badge>
             <Badge variant="secondary">TypeScript</Badge>
           </div>
         </div>
