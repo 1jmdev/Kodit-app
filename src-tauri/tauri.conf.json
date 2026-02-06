@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Template",
+  "productName": "Kodit",
   "version": "0.1.0",
-  "identifier": "com.1jm.template",
+  "identifier": "com.1jm.kodit",
   "build": {
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
@@ -12,8 +12,8 @@
   "app": {
     "windows": [
       {
-        "title": "Template",
-        "resizable": true
+      "title": "Kodit",
+      "resizable": true
       }
     ],
     "security": {

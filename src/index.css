@@ -44,73 +44,75 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* ───── Light theme ───── */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(222 14% 12%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(222 14% 12%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(222 14% 12%);
+  --primary: hsl(222 14% 16%);
+  --primary-foreground: hsl(0 0% 98%);
+  --secondary: hsl(220 10% 96%);
+  --secondary-foreground: hsl(222 14% 16%);
+  --muted: hsl(220 10% 96%);
+  --muted-foreground: hsl(220 6% 44%);
+  --accent: hsl(220 10% 94%);
+  --accent-foreground: hsl(222 14% 16%);
+  --destructive: hsl(0 72% 51%);
+  --border: hsl(220 10% 90%);
+  --input: hsl(220 10% 90%);
+  --ring: hsl(222 10% 58%);
+  --chart-1: hsl(24 80% 50%);
+  --chart-2: hsl(173 50% 42%);
+  --chart-3: hsl(215 30% 30%);
+  --chart-4: hsl(48 80% 55%);
+  --chart-5: hsl(38 75% 55%);
+  --sidebar: hsl(220 10% 98%);
+  --sidebar-foreground: hsl(222 14% 12%);
+  --sidebar-primary: hsl(222 14% 16%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(220 10% 94%);
+  --sidebar-accent-foreground: hsl(222 14% 16%);
+  --sidebar-border: hsl(220 10% 90%);
+  --sidebar-ring: hsl(222 10% 58%);
 }
 
+/* ───── Dark theme ───── */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: hsl(220 16% 10%);
+  --foreground: hsl(220 10% 92%);
+  --card: hsl(220 14% 13%);
+  --card-foreground: hsl(220 10% 92%);
+  --popover: hsl(220 14% 14%);
+  --popover-foreground: hsl(220 10% 92%);
+  --primary: hsl(220 10% 88%);
+  --primary-foreground: hsl(220 16% 10%);
+  --secondary: hsl(220 12% 17%);
+  --secondary-foreground: hsl(220 10% 88%);
+  --muted: hsl(220 12% 17%);
+  --muted-foreground: hsl(220 8% 52%);
+  --accent: hsl(220 12% 19%);
+  --accent-foreground: hsl(220 10% 92%);
+  --destructive: hsl(0 62% 55%);
+  --border: hsl(220 10% 18%);
+  --input: hsl(220 10% 20%);
+  --ring: hsl(220 8% 40%);
+  --chart-1: hsl(240 70% 46%);
+  --chart-2: hsl(162 50% 46%);
+  --chart-3: hsl(38 75% 55%);
+  --chart-4: hsl(280 60% 52%);
+  --chart-5: hsl(4 70% 50%);
+  --sidebar: hsl(220 16% 8%);
+  --sidebar-foreground: hsl(220 10% 92%);
+  --sidebar-primary: hsl(220 60% 50%);
+  --sidebar-primary-foreground: hsl(220 10% 92%);
+  --sidebar-accent: hsl(220 12% 17%);
+  --sidebar-accent-foreground: hsl(220 10% 92%);
+  --sidebar-border: hsl(220 10% 18%);
+  --sidebar-ring: hsl(220 8% 40%);
 }
 
 @layer base {
@@ -122,8 +124,7 @@
   }
 }
 
-/* Reset css to disable overflowing viewport, 
-not fully tested if scrolling or overflow breaks, debug with this */
+/* Desktop app reset */
 html, body {
   margin: 0;
   padding: 0;
@@ -131,4 +132,35 @@ html, body {
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(220 10% 30%);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(220 10% 40%);
+}
+
+/* Smooth text rendering for desktop app */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
