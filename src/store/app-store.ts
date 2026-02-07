@@ -13,7 +13,6 @@ export const initialState: AppState = {
     openRouterApiKey: "",
     window: {
       showWindowControls: true,
-      windowControlsPosition: "right",
     },
   },
   modelsLoading: false,
@@ -195,7 +194,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         settings: {
           ...state.settings,
-          window: { ...state.settings.window, windowControlsPosition: action.position },
+          window: { ...state.settings.window },
         },
       };
     case "SET_SHOW_WINDOW_CONTROLS":

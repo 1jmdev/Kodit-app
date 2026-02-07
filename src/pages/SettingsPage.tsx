@@ -48,7 +48,7 @@ export function SettingsPage() {
 
     const apiKey = apiKeyInput.trim();
     dispatch({ type: "SET_OPENROUTER_API_KEY", apiKey });
-    saveStoredSettings({ 
+    saveStoredSettings({
       openRouterApiKey: apiKey,
       window: state.settings.window,
     });
@@ -79,7 +79,7 @@ export function SettingsPage() {
     dispatch({ type: "SET_WINDOW_CONTROLS_POSITION", position });
     saveStoredSettings({
       openRouterApiKey: state.settings.openRouterApiKey,
-      window: { ...state.settings.window, windowControlsPosition: position },
+      window: { ...state.settings.window },
     });
   }
 
@@ -114,36 +114,6 @@ export function SettingsPage() {
                 onCheckedChange={handleToggleWindowControls}
               />
             </div>
-
-            {state.settings.window.showWindowControls && (
-              <div className="space-y-3">
-                <Label>Controls position</Label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleWindowControlsPosition("left")}
-                    className={cn(
-                      "flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-colors",
-                      state.settings.window.windowControlsPosition === "left"
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-card hover:bg-accent"
-                    )}
-                  >
-                    Left (macOS style)
-                  </button>
-                  <button
-                    onClick={() => handleWindowControlsPosition("right")}
-                    className={cn(
-                      "flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-colors",
-                      state.settings.window.windowControlsPosition === "right"
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-card hover:bg-accent"
-                    )}
-                  >
-                    Right (Windows style)
-                  </button>
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
 

@@ -4,14 +4,12 @@ const STORAGE_KEY = "kodit.settings";
 
 const windowSettingsSchema = z.object({
   showWindowControls: z.boolean().default(true),
-  windowControlsPosition: z.enum(["left", "right"]).default("right"),
 });
 
 const settingsSchema = z.object({
   openRouterApiKey: z.string().default(""),
   window: windowSettingsSchema.default({
     showWindowControls: true,
-    windowControlsPosition: "right",
   }),
 });
 
@@ -19,7 +17,6 @@ export type StoredSettings = z.infer<typeof settingsSchema>;
 
 export const defaultWindowSettings = {
   showWindowControls: true,
-  windowControlsPosition: "right" as const,
 };
 
 const defaultSettings: StoredSettings = {

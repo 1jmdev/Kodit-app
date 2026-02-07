@@ -90,7 +90,6 @@ export interface ModelConfig {
 
 export interface WindowSettings {
   showWindowControls: boolean;
-  windowControlsPosition: "left" | "right";
 }
 
 export interface SettingsConfig {
