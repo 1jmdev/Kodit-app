@@ -51,6 +51,7 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
 
     const userInput = input.trim();
     let activeProjectId = state.activeProjectId;
+    let activeWorkspacePath = state.projects.find((project) => project.id === activeProjectId)?.workspacePath ?? null;
     if (!activeProjectId && !pendingProject) {
       return;
     }
@@ -69,6 +70,7 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
         dispatch({ type: "SET_PROJECTS", projects: [project, ...state.projects.filter((p) => p.id !== project.id)] });
         dispatch({ type: "SET_ACTIVE_PROJECT", projectId: project.id });
         activeProjectId = project.id;
+        activeWorkspacePath = project.workspacePath;
         onPendingProjectSaved?.();
       }
 
@@ -86,6 +88,24 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
       navigate(`/chat/${threadId}`);
     }
     if (!threadId) return;
+
+    if (!activeWorkspacePath) {
+      const savedAgentMessage = await addMessage({
+        threadId,
+        role: "agent",
+        content: "Missing active workspace path. Create or select a project with a valid workspace.",
+        mode: "build",
+        model: state.selectedModel.id,
+        provider: state.selectedModel.provider,
+      });
+
+      dispatch({
+        type: "ADD_MESSAGE",
+        threadId,
+        message: savedAgentMessage,
+      });
+      return;
+    }
 
     const userMessage = await addMessage({
       threadId,
@@ -145,12 +165,22 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
         apiKey: state.settings.openRouterApiKey,
         modelId: state.selectedModel.id,
         messages: threadMessages,
+        workspacePath: activeWorkspacePath,
         onChunk: (chunk) => {
           dispatch({
             type: "UPDATE_MESSAGE",
             threadId,
             messageId: assistantMessageId,
             content: chunk,
+            isStreaming: true,
+          });
+        },
+        onToolCalls: (toolCalls) => {
+          dispatch({
+            type: "UPDATE_MESSAGE",
+            threadId,
+            messageId: assistantMessageId,
+            toolCalls,
             isStreaming: true,
           });
         },

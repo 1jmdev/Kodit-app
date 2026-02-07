@@ -2,6 +2,9 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::thread;
+use std::time::{Duration, Instant};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::AppHandle;
 use tauri::Manager;
@@ -479,6 +482,226 @@ fn pick_folder() -> Option<String> {
         .map(|path| path.to_string_lossy().to_string())
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct AgentReadFileResult {
+    pub path: String,
+    pub content: String,
+    pub start_line: usize,
+    pub end_line: usize,
+    pub total_lines: usize,
+    pub truncated: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AgentWriteFileResult {
+    pub path: String,
+    pub bytes_written: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AgentRunCommandResult {
+    pub command: String,
+    pub workdir: String,
+    pub exit_code: i32,
+    pub stdout: String,
+    pub stderr: String,
+    pub timed_out: bool,
+}
+
+fn canonicalize_workspace(workspace_path: &str) -> Result<PathBuf, String> {
+    let workspace = PathBuf::from(workspace_path);
+    if !workspace.is_absolute() {
+        return Err("Workspace path must be absolute".to_string());
+    }
+    if !workspace.exists() {
+        return Err("Workspace path does not exist".to_string());
+    }
+    fs::canonicalize(workspace).map_err(|e| e.to_string())
+}
+
+fn resolve_path_in_workspace(
+    workspace_root: &Path,
+    raw_path: &str,
+    allow_missing: bool,
+) -> Result<PathBuf, String> {
+    let candidate_input = PathBuf::from(raw_path);
+    let candidate = if candidate_input.is_absolute() {
+        candidate_input
+    } else {
+        workspace_root.join(candidate_input)
+    };
+
+    if candidate.exists() {
+        let canonical = fs::canonicalize(&candidate).map_err(|e| e.to_string())?;
+        if !canonical.starts_with(workspace_root) {
+            return Err("Path is outside workspace".to_string());
+        }
+        return Ok(canonical);
+    }
+
+    if !allow_missing {
+        return Err("Path does not exist".to_string());
+    }
+
+    for component in candidate.components() {
+        if matches!(component, std::path::Component::ParentDir) {
+            return Err("Parent directory traversal is not allowed".to_string());
+        }
+    }
+
+    let mut current = candidate.as_path();
+    while !current.exists() {
+        current = current
+            .parent()
+            .ok_or_else(|| "Could not resolve path parent".to_string())?;
+    }
+
+    let existing_parent = fs::canonicalize(current).map_err(|e| e.to_string())?;
+    if !existing_parent.starts_with(workspace_root) {
+        return Err("Path is outside workspace".to_string());
+    }
+
+    Ok(candidate)
+}
+
+fn resolve_workdir_in_workspace(
+    workspace_root: &Path,
+    workdir: Option<String>,
+) -> Result<PathBuf, String> {
+    let desired = workdir.unwrap_or_else(|| workspace_root.to_string_lossy().to_string());
+    let resolved = resolve_path_in_workspace(workspace_root, &desired, false)?;
+    if !resolved.is_dir() {
+        return Err("Workdir must be an existing directory".to_string());
+    }
+    Ok(resolved)
+}
+
+fn run_shell_command(
+    command: &str,
+    workdir: &Path,
+    timeout_ms: u64,
+) -> Result<AgentRunCommandResult, String> {
+    let mut process = if cfg!(target_os = "windows") {
+        let mut cmd = Command::new("cmd");
+        cmd.arg("/C").arg(command);
+        cmd
+    } else {
+        let mut cmd = Command::new("sh");
+        cmd.arg("-lc").arg(command);
+        cmd
+    };
+
+    let mut child = process
+        .current_dir(workdir)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| e.to_string())?;
+
+    let started = Instant::now();
+    let timeout = Duration::from_millis(timeout_ms);
+    let timed_out = loop {
+        if child.try_wait().map_err(|e| e.to_string())?.is_some() {
+            break false;
+        }
+        if started.elapsed() >= timeout {
+            let _ = child.kill();
+            break true;
+        }
+        thread::sleep(Duration::from_millis(20));
+    };
+
+    let output = child.wait_with_output().map_err(|e| e.to_string())?;
+    let exit_code = output
+        .status
+        .code()
+        .unwrap_or(if timed_out { 124 } else { -1 });
+
+    Ok(AgentRunCommandResult {
+        command: command.to_string(),
+        workdir: workdir.to_string_lossy().to_string(),
+        exit_code,
+        stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+        stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+        timed_out,
+    })
+}
+
+#[tauri::command]
+fn agent_read_file(
+    workspace_path: String,
+    path: String,
+    offset: Option<usize>,
+    limit: Option<usize>,
+) -> Result<AgentReadFileResult, String> {
+    let workspace_root = canonicalize_workspace(&workspace_path)?;
+    let resolved = resolve_path_in_workspace(&workspace_root, &path, false)?;
+    if !resolved.is_file() {
+        return Err("Path is not a file".to_string());
+    }
+
+    let text = fs::read_to_string(&resolved).map_err(|e| e.to_string())?;
+    let lines: Vec<&str> = text.lines().collect();
+    let total_lines = lines.len();
+    let start = offset.unwrap_or(0).min(total_lines);
+    let max_lines = limit.unwrap_or(2000).max(1);
+    let end = (start + max_lines).min(total_lines);
+    let truncated = end < total_lines;
+    let selected = if start >= end {
+        String::new()
+    } else {
+        lines[start..end].join("\n")
+    };
+
+    Ok(AgentReadFileResult {
+        path: resolved.to_string_lossy().to_string(),
+        content: selected,
+        start_line: start,
+        end_line: end,
+        total_lines,
+        truncated,
+    })
+}
+
+#[tauri::command]
+fn agent_write_file(
+    workspace_path: String,
+    path: String,
+    content: String,
+    create_dirs: Option<bool>,
+) -> Result<AgentWriteFileResult, String> {
+    let workspace_root = canonicalize_workspace(&workspace_path)?;
+    let resolved = resolve_path_in_workspace(&workspace_root, &path, true)?;
+
+    if let Some(parent) = resolved.parent() {
+        if create_dirs.unwrap_or(false) {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        } else if !parent.exists() {
+            return Err("Parent directory does not exist".to_string());
+        }
+    }
+
+    fs::write(&resolved, content.as_bytes()).map_err(|e| e.to_string())?;
+    Ok(AgentWriteFileResult {
+        path: resolved.to_string_lossy().to_string(),
+        bytes_written: content.len(),
+    })
+}
+
+#[tauri::command]
+fn agent_run_command(
+    workspace_path: String,
+    command: String,
+    workdir: Option<String>,
+    timeout_ms: Option<u64>,
+) -> Result<AgentRunCommandResult, String> {
+    let workspace_root = canonicalize_workspace(&workspace_path)?;
+    let resolved_workdir = resolve_workdir_in_workspace(&workspace_root, workdir)?;
+    let timeout = timeout_ms.unwrap_or(120_000).clamp(100, 300_000);
+
+    run_shell_command(&command, &resolved_workdir, timeout)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -499,7 +722,10 @@ pub fn run() {
             list_messages,
             save_diff,
             list_diffs,
-            pick_folder
+            pick_folder,
+            agent_read_file,
+            agent_write_file,
+            agent_run_command
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

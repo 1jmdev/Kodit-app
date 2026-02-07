@@ -38,8 +38,9 @@ export type AppAction =
       type: "UPDATE_MESSAGE";
       threadId: string;
       messageId: string;
-      content: string;
+      content?: string;
       isStreaming?: boolean;
+      toolCalls?: Message["toolCalls"];
     }
   | { type: "SET_ACTIVE_PROJECT"; projectId: string }
   | { type: "SET_AVAILABLE_MODELS"; models: ModelConfig[] }
@@ -100,7 +101,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
             ? {
                 ...thread,
                 messages: thread.messages.map((message) =>
-                  message.id === action.messageId ? action.nextMessage : message
+                  message.id === action.messageId
+                    ? {
+                        ...action.nextMessage,
+                        toolCalls: action.nextMessage.toolCalls ?? message.toolCalls,
+                      }
+                    : message
                 ),
                 updatedAt: action.nextMessage.timestamp,
               }
@@ -140,8 +146,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
                   m.id === action.messageId
                     ? {
                         ...m,
-                        content: action.content,
-                        isStreaming: action.isStreaming,
+                        content: action.content ?? m.content,
+                        isStreaming: action.isStreaming ?? m.isStreaming,
+                        toolCalls: action.toolCalls ?? m.toolCalls,
                       }
                     : m,
                 ),
