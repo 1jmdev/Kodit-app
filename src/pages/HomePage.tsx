@@ -49,51 +49,53 @@ export function HomePage() {
       <div className="w-full max-w-2xl space-y-6">
         {/* Project selector */}
         <div className="flex items-center justify-center gap-3">
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button variant="outline" size="sm" className="gap-2 min-w-[200px] justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="size-2 rounded-full bg-emerald-400" />
-                    <span>{selectedProject?.name || "Select project"}</span>
-                  </div>
-                  <ChevronDown className="size-3 text-muted-foreground" />
-                </Button>
-              }
-            />
-            <DropdownMenuContent align="center" sideOffset={4}>
-              {pendingProject && (
-                <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedProjectId(null);
-                    dispatch({ type: "SET_ACTIVE_THREAD", threadId: null });
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="size-2 rounded-full bg-amber-400" />
-                    <span>{pendingProject.name}</span>
-                    <span className="text-muted-foreground text-xs ml-1">{pendingProject.workspacePath}</span>
-                  </div>
-                </DropdownMenuItem>
-              )}
-              {state.projects.map((project) => (
-                <DropdownMenuItem
-                  key={project.id}
-                  onClick={() => {
-                    setPendingProject(null);
-                    setSelectedProjectId(project.id);
-                    dispatch({ type: "SET_ACTIVE_PROJECT", projectId: project.id });
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="size-2 rounded-full bg-emerald-400" />
-                    <span>{project.name}</span>
-                    <span className="text-muted-foreground text-xs ml-1">{project.workspacePath}</span>
-                  </div>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {(state.projects.length > 0 || pendingProject) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button variant="outline" size="sm" className="gap-2 min-w-[200px] justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="size-2 rounded-full bg-emerald-400" />
+                      <span>{selectedProject?.name || "Select project"}</span>
+                    </div>
+                    <ChevronDown className="size-3 text-muted-foreground" />
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="center" sideOffset={4}>
+                {pendingProject && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setSelectedProjectId(null);
+                      dispatch({ type: "SET_ACTIVE_THREAD", threadId: null });
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="size-2 rounded-full bg-amber-400" />
+                      <span>{pendingProject.name}</span>
+                      <span className="text-muted-foreground text-xs ml-1">{pendingProject.workspacePath}</span>
+                    </div>
+                  </DropdownMenuItem>
+                )}
+                {state.projects.map((project) => (
+                  <DropdownMenuItem
+                    key={project.id}
+                    onClick={() => {
+                      setPendingProject(null);
+                      setSelectedProjectId(project.id);
+                      dispatch({ type: "SET_ACTIVE_PROJECT", projectId: project.id });
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="size-2 rounded-full bg-emerald-400" />
+                      <span>{project.name}</span>
+                      <span className="text-muted-foreground text-xs ml-1">{project.workspacePath}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => void handleOpenFolder()}>
             <FolderOpen className="size-3.5" />
