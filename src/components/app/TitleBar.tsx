@@ -32,7 +32,7 @@ function useWindowMaximized() {
 
   useEffect(() => {
     const appWindow = getCurrentWindow();
-    
+
     appWindow.isMaximized().then(setIsMaximized);
 
     const unlisten = appWindow.onResized(async () => {
@@ -65,9 +65,9 @@ async function closeWindow() {
 
 function MacOSControls({ isMaximized }: { isMaximized: boolean }) {
   const [hovered, setHovered] = useState(false);
-  
+
   return (
-    <div 
+    <div
       className="flex items-center gap-2"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -139,7 +139,7 @@ function WindowControls({ platform, isMaximized }: { platform: Platform; isMaxim
   if (platform === "macos") {
     return <MacOSControls isMaximized={isMaximized} />;
   }
-  
+
   return <WindowsLinuxControls isMaximized={isMaximized} />;
 }
 
@@ -149,21 +149,60 @@ export function TitleBar() {
   const isMaximized = useWindowMaximized();
   const { showWindowControls, windowControlsPosition } = state.settings.window;
   const controlsOnLeft = windowControlsPosition === "left";
+  const pocketWidth = 160;
+  const curveWidth = 62;
+  const pocketTotalWidth = pocketWidth + curveWidth;
 
   return (
-    <div className="title-bar-shell relative flex-shrink-0">
-      <div data-tauri-drag-region className="title-bar-strip" />
+    <div className="relative z-30 h-[10px] flex-shrink-0">
+      <div data-tauri-drag-region className="absolute inset-x-0 top-0 z-10 h-[10px] bg-sidebar" />
 
       {showWindowControls && controlsOnLeft && (
-        <div data-tauri-drag-region className="title-bar-pocket title-bar-pocket-left">
-          <WindowControls platform={platform} isMaximized={isMaximized} />
-        </div>
+        <>
+          <svg
+            data-tauri-drag-region
+            className="absolute left-0 top-0 z-20 h-11 scale-x-[-1]"
+            style={{ width: `${pocketTotalWidth}px` }}
+            viewBox="0 0 222 44"
+            aria-hidden="true"
+          >
+            <path
+              d="M0 10H24C38 10 50 15 60 22L72 33C80 41 90 44 106 44H222V10Z"
+              fill="var(--sidebar)"
+            />
+          </svg>
+          <div
+            data-tauri-drag-region
+            className="absolute left-0 top-0 z-30 flex h-11 items-start justify-center pt-1"
+            style={{ width: `${pocketWidth}px` }}
+          >
+            <WindowControls platform={platform} isMaximized={isMaximized} />
+          </div>
+        </>
       )}
 
       {showWindowControls && !controlsOnLeft && (
-        <div data-tauri-drag-region className="title-bar-pocket title-bar-pocket-right">
-          <WindowControls platform={platform} isMaximized={isMaximized} />
-        </div>
+        <>
+          <svg
+            data-tauri-drag-region
+            className="absolute right-0 top-0 z-20 h-11"
+            style={{ width: `${pocketTotalWidth}px` }}
+            viewBox="0 0 222 44"
+            aria-hidden="true"
+          >
+            <path
+              d="M0 10H24C38 10 50 15 60 22L72 33C80 41 90 44 106 44H222V10Z"
+              fill="var(--sidebar)"
+            />
+          </svg>
+          <div
+            data-tauri-drag-region
+            className="absolute right-0 top-0 z-30 flex h-11 items-start justify-center pt-1"
+            style={{ width: `${pocketWidth}px` }}
+          >
+            <WindowControls platform={platform} isMaximized={isMaximized} />
+          </div>
+        </>
       )}
     </div>
   );

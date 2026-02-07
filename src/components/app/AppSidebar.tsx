@@ -89,11 +89,11 @@ export function AppSidebar() {
   ];
 
   return (
-    <div className="sidebar-container flex h-full w-[260px] flex-col bg-sidebar select-none">
+    <div className="flex h-full w-[260px] flex-col bg-sidebar select-none rounded-tr-[24px]">
       {/* Drag region for sidebar top */}
       <div 
         data-tauri-drag-region
-        className="h-2 flex-shrink-0"
+        className="h-[10px] flex-shrink-0"
       />
 
       <div className="flex flex-col gap-0.5 px-2 py-1">
