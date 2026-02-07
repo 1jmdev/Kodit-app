@@ -88,8 +88,14 @@ export interface ModelConfig {
   qualityLevel: "Low" | "Medium" | "High" | "Extra High";
 }
 
+export interface WindowSettings {
+  showWindowControls: boolean;
+  windowControlsPosition: "left" | "right";
+}
+
 export interface SettingsConfig {
   openRouterApiKey: string;
+  window: WindowSettings;
 }
 
 export interface AppState {

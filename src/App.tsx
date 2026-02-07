@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AppContext, appReducer, initialState } from "@/store/app-store";
 import { AppSidebar } from "@/components/app/AppSidebar";
+import { TitleBar } from "@/components/app/TitleBar";
 import { HomePage } from "@/pages/HomePage";
 import { ChatPage } from "@/pages/ChatPage";
 import { SettingsPage } from "@/pages/SettingsPage";
@@ -113,6 +114,9 @@ function App() {
     if (stored.openRouterApiKey) {
       dispatch({ type: "SET_OPENROUTER_API_KEY", apiKey: stored.openRouterApiKey });
     }
+    if (stored.window) {
+      dispatch({ type: "SET_WINDOW_SETTINGS", settings: stored.window });
+    }
   }, []);
 
   useEffect(() => {
@@ -155,22 +159,31 @@ function App() {
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
       <AppContext.Provider value={{ state, dispatch }}>
         <BrowserRouter>
-          <div className="flex h-screen w-screen flex-col overflow-hidden bg-background">
+          <div className="flex h-screen w-screen flex-col overflow-hidden bg-sidebar">
             <div className="flex flex-1 overflow-hidden">
+              {/* Sidebar */}
               <AppSidebar />
-              <main className="flex flex-1 flex-col overflow-hidden">
-                {state.storageLoading ? (
-                  <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-                    Loading workspace...
-                  </div>
-                ) : (
-                  <Routes>
-                    <Route path="/" element={<HomePage />} />
-                    <Route path="/chat/:threadId" element={<ChatPage />} />
-                    <Route path="/settings" element={<SettingsPage />} />
-                  </Routes>
-                )}
-              </main>
+              
+              {/* Main content area with custom title bar shape */}
+              <div className="flex flex-1 flex-col overflow-hidden">
+                {/* Custom shaped title bar - thin bar flowing to wider controls area */}
+                <TitleBar />
+                
+                {/* Content */}
+                <main className="flex flex-1 flex-col overflow-hidden rounded-tl-2xl bg-background">
+                  {state.storageLoading ? (
+                    <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+                      Loading workspace...
+                    </div>
+                  ) : (
+                    <Routes>
+                      <Route path="/" element={<HomePage />} />
+                      <Route path="/chat/:threadId" element={<ChatPage />} />
+                      <Route path="/settings" element={<SettingsPage />} />
+                    </Routes>
+                  )}
+                </main>
+              </div>
             </div>
           </div>
         </BrowserRouter>

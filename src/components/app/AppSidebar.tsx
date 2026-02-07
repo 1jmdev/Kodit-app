@@ -2,15 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAppStore } from "@/store/app-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
   Plus,
   Zap,
   Sparkles,
-  PanelLeftClose,
-  PanelLeftOpen,
   Settings,
   MessageSquare,
   Folder,
@@ -82,10 +78,6 @@ export function AppSidebar() {
     navigate(`/chat/${threadId}`);
   }
 
-  function handleToggleSidebar() {
-    dispatch({ type: "TOGGLE_SIDEBAR" });
-  }
-
   function handleOpenSettings() {
     navigate("/settings");
   }
@@ -96,57 +88,13 @@ export function AppSidebar() {
     { id: "skills", label: "Skills", icon: Sparkles },
   ];
 
-  // Collapsed sidebar
-  if (state.sidebarCollapsed) {
-    return (
-      <div className="flex h-full w-12 flex-col items-center border-r border-border/50 bg-sidebar py-2 gap-1">
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={handleToggleSidebar}
-              />
-            }
-          >
-            <PanelLeftOpen className="size-4 text-muted-foreground" />
-          </TooltipTrigger>
-          <TooltipContent side="right">Expand sidebar</TooltipContent>
-        </Tooltip>
-        <div className="my-1 h-px w-6 bg-border/50" />
-        {navItems.map((item) => (
-          <Tooltip key={item.id}>
-            <TooltipTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={item.action}
-                />
-              }
-            >
-              <item.icon className="size-4 text-muted-foreground" />
-            </TooltipTrigger>
-            <TooltipContent side="right">{item.label}</TooltipContent>
-          </Tooltip>
-        ))}
-      </div>
-    );
-  }
-
   return (
-    <div className="flex h-full w-[260px] flex-col bg-sidebar border-r border-border/40 select-none">
-      <div className="flex items-center justify-start px-3 pt-9 pb-1">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={handleToggleSidebar}
-          className="text-muted-foreground hover:text-foreground -ml-1"
-        >
-          <PanelLeftClose className="size-4" />
-        </Button>
-      </div>
+    <div className="sidebar-container flex h-full w-[260px] flex-col bg-sidebar select-none">
+      {/* Drag region for sidebar top */}
+      <div 
+        data-tauri-drag-region
+        className="h-2 flex-shrink-0"
+      />
 
       <div className="flex flex-col gap-0.5 px-2 py-1">
         {navItems.map((item) => (

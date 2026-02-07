@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   fetchOpenRouterModels,
   OPENROUTER_API_KEY_HINT,
   validateOpenRouterApiKey,
 } from "@/lib/openrouter";
 import { saveStoredSettings } from "@/lib/settings-storage";
+import { cn } from "@/lib/utils";
 
 export function SettingsPage() {
   const { state, dispatch } = useAppStore();
@@ -46,7 +48,10 @@ export function SettingsPage() {
 
     const apiKey = apiKeyInput.trim();
     dispatch({ type: "SET_OPENROUTER_API_KEY", apiKey });
-    saveStoredSettings({ openRouterApiKey: apiKey });
+    saveStoredSettings({ 
+      openRouterApiKey: apiKey,
+      window: state.settings.window,
+    });
     setLocalError(null);
     await refreshModels(apiKey);
   }
@@ -62,15 +67,85 @@ export function SettingsPage() {
     await refreshModels(state.settings.openRouterApiKey);
   }
 
+  function handleToggleWindowControls(show: boolean) {
+    dispatch({ type: "SET_SHOW_WINDOW_CONTROLS", show });
+    saveStoredSettings({
+      openRouterApiKey: state.settings.openRouterApiKey,
+      window: { ...state.settings.window, showWindowControls: show },
+    });
+  }
+
+  function handleWindowControlsPosition(position: "left" | "right") {
+    dispatch({ type: "SET_WINDOW_CONTROLS_POSITION", position });
+    saveStoredSettings({
+      openRouterApiKey: state.settings.openRouterApiKey,
+      window: { ...state.settings.window, windowControlsPosition: position },
+    });
+  }
+
   return (
     <div className="flex flex-1 overflow-auto px-6 py-8">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
           <p className="text-sm text-muted-foreground">
-            Connect OpenRouter, sync models, and use the AI SDK streaming chat pipeline.
+            Connect OpenRouter, sync models, and customize your workspace.
           </p>
         </div>
+
+        {/* Window Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Window Controls</CardTitle>
+            <CardDescription>
+              Customize how window controls (minimize, maximize, close) appear in the title bar.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Show window controls</Label>
+                <p className="text-xs text-muted-foreground">
+                  Display minimize, maximize, and close buttons
+                </p>
+              </div>
+              <Switch
+                checked={state.settings.window.showWindowControls}
+                onCheckedChange={handleToggleWindowControls}
+              />
+            </div>
+
+            {state.settings.window.showWindowControls && (
+              <div className="space-y-3">
+                <Label>Controls position</Label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleWindowControlsPosition("left")}
+                    className={cn(
+                      "flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-colors",
+                      state.settings.window.windowControlsPosition === "left"
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-card hover:bg-accent"
+                    )}
+                  >
+                    Left (macOS style)
+                  </button>
+                  <button
+                    onClick={() => handleWindowControlsPosition("right")}
+                    className={cn(
+                      "flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-colors",
+                      state.settings.window.windowControlsPosition === "right"
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-card hover:bg-accent"
+                    )}
+                  >
+                    Right (Windows style)
+                  </button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

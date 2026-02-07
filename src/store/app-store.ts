@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { AppState, Thread, Message, ModelConfig } from "./types";
+import type { AppState, Thread, Message, ModelConfig, WindowSettings } from "./types";
 import { mockModels, defaultModel } from "./mock-data";
 
 export const initialState: AppState = {
@@ -11,6 +11,10 @@ export const initialState: AppState = {
   selectedModel: defaultModel,
   settings: {
     openRouterApiKey: "",
+    window: {
+      showWindowControls: true,
+      windowControlsPosition: "right",
+    },
   },
   modelsLoading: false,
   modelsError: null,
@@ -46,7 +50,10 @@ export type AppAction =
   | { type: "SET_MODEL"; model: ModelConfig }
   | { type: "TOGGLE_SIDEBAR" }
   | { type: "TOGGLE_DIFF_PANEL" }
-  | { type: "SET_DIFF_PANEL"; open: boolean };
+  | { type: "SET_DIFF_PANEL"; open: boolean }
+  | { type: "SET_WINDOW_SETTINGS"; settings: WindowSettings }
+  | { type: "SET_WINDOW_CONTROLS_POSITION"; position: "left" | "right" }
+  | { type: "SET_SHOW_WINDOW_CONTROLS"; show: boolean };
 
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -178,6 +185,27 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, diffPanelOpen: !state.diffPanelOpen };
     case "SET_DIFF_PANEL":
       return { ...state, diffPanelOpen: action.open };
+    case "SET_WINDOW_SETTINGS":
+      return {
+        ...state,
+        settings: { ...state.settings, window: action.settings },
+      };
+    case "SET_WINDOW_CONTROLS_POSITION":
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          window: { ...state.settings.window, windowControlsPosition: action.position },
+        },
+      };
+    case "SET_SHOW_WINDOW_CONTROLS":
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          window: { ...state.settings.window, showWindowControls: action.show },
+        },
+      };
     default:
       return state;
   }

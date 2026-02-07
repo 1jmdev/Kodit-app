@@ -12,8 +12,9 @@
   "app": {
     "windows": [
       {
-      "title": "Kodit",
-      "resizable": true
+        "title": "Kodit",
+        "resizable": true,
+        "decorations": false
       }
     ],
     "security": {

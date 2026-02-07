@@ -483,6 +483,7 @@ fn pick_folder() -> Option<String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_os::init())
         .setup(|app| {
             let root = storage_root(&app.handle()).map_err(std::io::Error::other)?;
             ensure_storage_ready(&root).map_err(std::io::Error::other)?;

@@ -164,3 +164,56 @@ body {
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
+
+/* Custom title bar: thin strip with wider control pocket */
+.title-bar-shell {
+  position: relative;
+  height: 6px;
+}
+
+.title-bar-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 6px;
+  background: var(--sidebar);
+  z-index: 10;
+}
+
+.title-bar-pocket {
+  position: absolute;
+  top: 0;
+  width: 142px;
+  height: 40px;
+  background: var(--sidebar);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.title-bar-pocket-right {
+  right: 0;
+  border-bottom-left-radius: 22px;
+}
+
+.title-bar-pocket-left {
+  left: 0;
+  border-bottom-right-radius: 22px;
+}
+
+.sidebar-container {
+  border-top-right-radius: 18px;
+}
+
+/* Ensure drag regions work correctly */
+[data-tauri-drag-region] {
+  -webkit-app-region: drag;
+}
+
+[data-tauri-drag-region] button,
+[data-tauri-drag-region] a,
+[data-tauri-drag-region] input {
+  -webkit-app-region: no-drag;
+}
