@@ -32,16 +32,22 @@ function useWindowMaximized() {
 
   useEffect(() => {
     const appWindow = getCurrentWindow();
-
-    appWindow.isMaximized().then(setIsMaximized);
+    appWindow
+      .isMaximized()
+      .then(setIsMaximized)
+      .catch(() => setIsMaximized(false));
 
     const unlisten = appWindow.onResized(async () => {
-      const maximized = await appWindow.isMaximized();
-      setIsMaximized(maximized);
+      try {
+        const maximized = await appWindow.isMaximized();
+        setIsMaximized(maximized);
+      } catch {
+        setIsMaximized(false);
+      }
     });
 
     return () => {
-      unlisten.then((fn) => fn());
+      unlisten.then((fn) => fn()).catch(() => {});
     };
   }, []);
 
@@ -49,18 +55,30 @@ function useWindowMaximized() {
 }
 
 async function minimizeWindow() {
-  const appWindow = getCurrentWindow();
-  await appWindow.minimize();
+  try {
+    const appWindow = getCurrentWindow();
+    await appWindow.minimize();
+  } catch (error) {
+    console.error("Failed to minimize window", error);
+  }
 }
 
 async function toggleMaximize() {
-  const appWindow = getCurrentWindow();
-  await appWindow.toggleMaximize();
+  try {
+    const appWindow = getCurrentWindow();
+    await appWindow.toggleMaximize();
+  } catch (error) {
+    console.error("Failed to toggle maximize", error);
+  }
 }
 
 async function closeWindow() {
-  const appWindow = getCurrentWindow();
-  await appWindow.close();
+  try {
+    const appWindow = getCurrentWindow();
+    await appWindow.close();
+  } catch (error) {
+    console.error("Failed to close window", error);
+  }
 }
 
 function MacOSControls({ isMaximized }: { isMaximized: boolean }) {
@@ -73,7 +91,9 @@ function MacOSControls({ isMaximized }: { isMaximized: boolean }) {
       onMouseLeave={() => setHovered(false)}
     >
       <button
-        onClick={closeWindow}
+        onClick={() => {
+          void closeWindow();
+        }}
         className="group size-3 rounded-full bg-[#ff5f57] transition-all hover:bg-[#ff5f57]/90 flex items-center justify-center"
         aria-label="Close"
       >
@@ -82,7 +102,9 @@ function MacOSControls({ isMaximized }: { isMaximized: boolean }) {
         )}
       </button>
       <button
-        onClick={minimizeWindow}
+        onClick={() => {
+          void minimizeWindow();
+        }}
         className="group size-3 rounded-full bg-[#febc2e] transition-all hover:bg-[#febc2e]/90 flex items-center justify-center"
         aria-label="Minimize"
       >
@@ -91,7 +113,9 @@ function MacOSControls({ isMaximized }: { isMaximized: boolean }) {
         )}
       </button>
       <button
-        onClick={toggleMaximize}
+        onClick={() => {
+          void toggleMaximize();
+        }}
         className="group size-3 rounded-full bg-[#28c840] transition-all hover:bg-[#28c840]/90 flex items-center justify-center"
         aria-label={isMaximized ? "Restore" : "Maximize"}
       >
@@ -107,14 +131,18 @@ function WindowsLinuxControls({ isMaximized }: { isMaximized: boolean }) {
   return (
     <div className="flex items-center">
       <button
-        onClick={minimizeWindow}
+        onClick={() => {
+          void minimizeWindow();
+        }}
         className="flex h-8 w-10 items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-foreground rounded-md"
         aria-label="Minimize"
       >
         <Minus className="size-4" />
       </button>
       <button
-        onClick={toggleMaximize}
+        onClick={() => {
+          void toggleMaximize();
+        }}
         className="flex h-8 w-10 items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-foreground rounded-md"
         aria-label={isMaximized ? "Restore" : "Maximize"}
       >
@@ -125,7 +153,9 @@ function WindowsLinuxControls({ isMaximized }: { isMaximized: boolean }) {
         )}
       </button>
       <button
-        onClick={closeWindow}
+        onClick={() => {
+          void closeWindow();
+        }}
         className="flex h-8 w-10 items-center justify-center text-muted-foreground transition-colors hover:bg-destructive hover:text-white rounded-md"
         aria-label="Close"
       >
@@ -149,9 +179,6 @@ export function TitleBar() {
   const isMaximized = useWindowMaximized();
   const { showWindowControls, windowControlsPosition } = state.settings.window;
   const controlsOnLeft = windowControlsPosition === "left";
-  const pocketWidth = 160;
-  const curveWidth = 62;
-  const pocketTotalWidth = pocketWidth + curveWidth;
 
   return (
     <div className="relative z-30 h-[10px] flex-shrink-0">
@@ -162,7 +189,6 @@ export function TitleBar() {
           <svg
             data-tauri-drag-region
             className="absolute left-0 top-0 z-20 h-11 scale-x-[-1]"
-            style={{ width: `${pocketTotalWidth}px` }}
             viewBox="0 0 222 44"
             aria-hidden="true"
           >
@@ -174,7 +200,6 @@ export function TitleBar() {
           <div
             data-tauri-drag-region
             className="absolute left-0 top-0 z-30 flex h-11 items-start justify-center pt-1"
-            style={{ width: `${pocketWidth}px` }}
           >
             <WindowControls platform={platform} isMaximized={isMaximized} />
           </div>
@@ -186,7 +211,6 @@ export function TitleBar() {
           <svg
             data-tauri-drag-region
             className="absolute right-0 top-0 z-20 h-11"
-            style={{ width: `${pocketTotalWidth}px` }}
             viewBox="0 0 222 44"
             aria-hidden="true"
           >
@@ -197,8 +221,7 @@ export function TitleBar() {
           </svg>
           <div
             data-tauri-drag-region
-            className="absolute right-0 top-0 z-30 flex h-11 items-start justify-center pt-1"
-            style={{ width: `${pocketWidth}px` }}
+            className="absolute right-4 top-0 z-30 flex h-11 items-start justify-center pt-1"
           >
             <WindowControls platform={platform} isMaximized={isMaximized} />
           </div>

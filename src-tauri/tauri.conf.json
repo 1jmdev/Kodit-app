@@ -14,7 +14,8 @@
       {
         "title": "Kodit",
         "resizable": true,
-        "decorations": false
+        "decorations": false,
+        "maximized": true
       }
     ],
     "security": {
