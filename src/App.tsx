@@ -11,7 +11,6 @@ import { fetchOpenRouterModels, validateOpenRouterApiKey } from "@/lib/openroute
 import {
   initializeStorage,
   listProjects,
-  createDefaultProjectIfNeeded,
   listThreads,
   listMessages,
 } from "@/lib/tauri-storage";
@@ -28,17 +27,14 @@ function App() {
 
       try {
         await initializeStorage();
-        let projects = await listProjects();
-
-        if (projects.length === 0) {
-          const defaultProject = await createDefaultProjectIfNeeded();
-          projects = [defaultProject];
-        }
+        const projects = await listProjects();
 
         if (cancelled) return;
 
         dispatch({ type: "SET_PROJECTS", projects });
-        dispatch({ type: "SET_ACTIVE_PROJECT", projectId: projects[0].id });
+        if (projects.length > 0) {
+          dispatch({ type: "SET_ACTIVE_PROJECT", projectId: projects[0].id });
+        }
       } catch (error) {
         if (!cancelled) {
           const message = error instanceof Error ? error.message : "Failed to initialize storage";

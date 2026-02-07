@@ -116,6 +116,10 @@ export async function createDefaultProjectIfNeeded(): Promise<Project> {
   });
 }
 
+export async function pickFolder(): Promise<string | null> {
+  return invoke<string | null>("pick_folder");
+}
+
 export async function listThreads(projectId: string): Promise<Thread[]> {
   const threads = await invoke<BackendThread[]>("list_threads", { projectId });
   return threads.map(mapThread);

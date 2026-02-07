@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { OPENROUTER_API_KEY_HINT, streamOpenRouterText, validateOpenRouterApiKey } from "@/lib/openrouter";
-import { addMessage, createThread } from "@/lib/tauri-storage";
+import { addMessage, createProject, createThread } from "@/lib/tauri-storage";
 import { cn } from "@/lib/utils";
 import {
   ArrowUp,
@@ -23,9 +23,14 @@ import {
 interface PromptInputProps {
   variant?: "home" | "chat";
   placeholder?: string;
+  pendingProject?: {
+    name: string;
+    workspacePath: string;
+  } | null;
+  onPendingProjectSaved?: () => void;
 }
 
-export function PromptInput({ variant = "chat", placeholder }: PromptInputProps) {
+export function PromptInput({ variant = "chat", placeholder, pendingProject, onPendingProjectSaved }: PromptInputProps) {
   const { state, dispatch } = useAppStore();
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -45,8 +50,8 @@ export function PromptInput({ variant = "chat", placeholder }: PromptInputProps)
     if (isGenerating) return;
 
     const userInput = input.trim();
-    const activeProjectId = state.activeProjectId;
-    if (!activeProjectId) {
+    let activeProjectId = state.activeProjectId;
+    if (!activeProjectId && !pendingProject) {
       return;
     }
 
@@ -56,6 +61,21 @@ export function PromptInput({ variant = "chat", placeholder }: PromptInputProps)
 
     let threadId = state.activeThreadId;
     if (!threadId) {
+      if (pendingProject) {
+        const project = await createProject({
+          name: pendingProject.name,
+          workspacePath: pendingProject.workspacePath,
+        });
+        dispatch({ type: "SET_PROJECTS", projects: [project, ...state.projects.filter((p) => p.id !== project.id)] });
+        dispatch({ type: "SET_ACTIVE_PROJECT", projectId: project.id });
+        activeProjectId = project.id;
+        onPendingProjectSaved?.();
+      }
+
+      if (!activeProjectId) {
+        return;
+      }
+
       const createdThread = await createThread({
         projectId: activeProjectId,
         title: userInput.slice(0, 50) + (userInput.length > 50 ? "..." : ""),

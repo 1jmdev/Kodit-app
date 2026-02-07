@@ -472,6 +472,13 @@ fn list_diffs(app: AppHandle, thread_id: String) -> Result<Vec<DiffRecord>, Stri
     Ok(diffs)
 }
 
+#[tauri::command]
+fn pick_folder() -> Option<String> {
+    rfd::FileDialog::new()
+        .pick_folder()
+        .map(|path| path.to_string_lossy().to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -490,7 +497,8 @@ pub fn run() {
             add_message,
             list_messages,
             save_diff,
-            list_diffs
+            list_diffs,
+            pick_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

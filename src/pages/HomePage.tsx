@@ -1,5 +1,6 @@
+import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "@/store/app-store";
-import { createProject } from "@/lib/tauri-storage";
+import { pickFolder } from "@/lib/tauri-storage";
 import { PromptInput } from "@/components/app/PromptInput";
 import {
   DropdownMenu,
@@ -10,17 +11,37 @@ import {
 import { Button } from "@/components/ui/button";
 import { FolderOpen, ChevronDown } from "lucide-react";
 
+interface PendingProject {
+  name: string;
+  workspacePath: string;
+}
+
 export function HomePage() {
   const { state, dispatch } = useAppStore();
-  const activeProject = state.projects.find((p) => p.id === state.activeProjectId);
-  async function handleCreateProject() {
-    const workspacePath = window.prompt("Workspace path", activeProject?.workspacePath || "");
+  const [pendingProject, setPendingProject] = useState<PendingProject | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(state.activeProjectId);
+
+  useEffect(() => {
+    if (pendingProject) return;
+    setSelectedProjectId(state.activeProjectId);
+  }, [pendingProject, state.activeProjectId]);
+
+  const selectedProject = useMemo(() => {
+    if (pendingProject && selectedProjectId === null) {
+      return pendingProject;
+    }
+
+    return state.projects.find((project) => project.id === selectedProjectId) || null;
+  }, [pendingProject, selectedProjectId, state.projects]);
+
+  async function handleOpenFolder() {
+    const workspacePath = await pickFolder();
     if (!workspacePath) return;
 
-    const name = workspacePath.split("/").filter(Boolean).pop() || "workspace";
-    const project = await createProject({ name, workspacePath });
-    dispatch({ type: "SET_PROJECTS", projects: [project, ...state.projects.filter((p) => p.id !== project.id)] });
-    dispatch({ type: "SET_ACTIVE_PROJECT", projectId: project.id });
+    const name = workspacePath.split(/[/\\]/).filter(Boolean).pop() || "workspace";
+    setPendingProject({ name, workspacePath });
+    setSelectedProjectId(null);
+    dispatch({ type: "SET_ACTIVE_THREAD", threadId: null });
   }
 
   return (
@@ -34,17 +55,35 @@ export function HomePage() {
                 <Button variant="outline" size="sm" className="gap-2 min-w-[200px] justify-between text-sm">
                   <div className="flex items-center gap-2">
                     <div className="size-2 rounded-full bg-emerald-400" />
-                    <span>{activeProject?.name || "Select project"}</span>
+                    <span>{selectedProject?.name || "Select project"}</span>
                   </div>
                   <ChevronDown className="size-3 text-muted-foreground" />
                 </Button>
               }
             />
             <DropdownMenuContent align="center" sideOffset={4}>
+              {pendingProject && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedProjectId(null);
+                    dispatch({ type: "SET_ACTIVE_THREAD", threadId: null });
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="size-2 rounded-full bg-amber-400" />
+                    <span>{pendingProject.name}</span>
+                    <span className="text-muted-foreground text-xs ml-1">{pendingProject.workspacePath}</span>
+                  </div>
+                </DropdownMenuItem>
+              )}
               {state.projects.map((project) => (
                 <DropdownMenuItem
                   key={project.id}
-                  onClick={() => dispatch({ type: "SET_ACTIVE_PROJECT", projectId: project.id })}
+                  onClick={() => {
+                    setPendingProject(null);
+                    setSelectedProjectId(project.id);
+                    dispatch({ type: "SET_ACTIVE_PROJECT", projectId: project.id });
+                  }}
                 >
                   <div className="flex items-center gap-2">
                     <div className="size-2 rounded-full bg-emerald-400" />
@@ -56,14 +95,18 @@ export function HomePage() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => void handleCreateProject()}>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => void handleOpenFolder()}>
             <FolderOpen className="size-3.5" />
             Open folder
           </Button>
         </div>
 
         {/* Input */}
-        <PromptInput variant="home" />
+        <PromptInput
+          variant="home"
+          pendingProject={selectedProjectId === null ? pendingProject : null}
+          onPendingProjectSaved={() => setPendingProject(null)}
+        />
 
         {/* Quick actions hint */}
         <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground/50">
