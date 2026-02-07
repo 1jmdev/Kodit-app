@@ -145,7 +145,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       };
     }
     case "SET_ACTIVE_PROJECT":
-      return { ...state, activeProjectId: action.projectId, activeThreadId: null, threads: [] };
+      return { ...state, activeProjectId: action.projectId, activeThreadId: null };
     case "SET_AVAILABLE_MODELS": {
       if (action.models.length === 0) {
         return state;

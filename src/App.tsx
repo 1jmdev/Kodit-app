@@ -59,27 +59,34 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const activeProjectId = state.activeProjectId;
-    if (!activeProjectId) {
+    if (state.projects.length === 0) {
       dispatch({ type: "SET_THREADS", threads: [] });
       return;
     }
 
     let cancelled = false;
 
-    async function loadProjectThreads() {
+    async function loadAllProjectThreads() {
       try {
-        const projectThreads = await listThreads(activeProjectId!);
-        const hydratedThreads = await Promise.all(
-          projectThreads.map(async (thread) => {
-            const messages = await listMessages(thread.id);
-            return {
-              ...thread,
-              messages,
-              updatedAt: messages.length > 0 ? messages[messages.length - 1].timestamp : thread.updatedAt,
-            };
+        const projectThreadGroups = await Promise.all(
+          state.projects.map(async (project) => {
+            const threads = await listThreads(project.id);
+            return Promise.all(
+              threads.map(async (thread) => {
+                const messages = await listMessages(thread.id);
+                return {
+                  ...thread,
+                  messages,
+                  updatedAt: messages.length > 0 ? messages[messages.length - 1].timestamp : thread.updatedAt,
+                };
+              }),
+            );
           }),
         );
+
+        const hydratedThreads = projectThreadGroups
+          .flat()
+          .sort((a, b) => b.updatedAt - a.updatedAt);
 
         if (!cancelled) {
           dispatch({ type: "SET_THREADS", threads: hydratedThreads });
@@ -98,12 +105,12 @@ function App() {
       }
     }
 
-    void loadProjectThreads();
+    void loadAllProjectThreads();
 
     return () => {
       cancelled = true;
     };
-  }, [state.activeProjectId]);
+  }, [state.projects]);
 
   useEffect(() => {
     const stored = loadStoredSettings();
