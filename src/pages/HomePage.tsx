@@ -1,4 +1,5 @@
 import { useAppStore } from "@/store/app-store";
+import { createProject } from "@/lib/tauri-storage";
 import { PromptInput } from "@/components/app/PromptInput";
 import {
   DropdownMenu,
@@ -12,6 +13,15 @@ import { FolderOpen, ChevronDown } from "lucide-react";
 export function HomePage() {
   const { state, dispatch } = useAppStore();
   const activeProject = state.projects.find((p) => p.id === state.activeProjectId);
+  async function handleCreateProject() {
+    const workspacePath = window.prompt("Workspace path", activeProject?.workspacePath || "");
+    if (!workspacePath) return;
+
+    const name = workspacePath.split("/").filter(Boolean).pop() || "workspace";
+    const project = await createProject({ name, workspacePath });
+    dispatch({ type: "SET_PROJECTS", projects: [project, ...state.projects.filter((p) => p.id !== project.id)] });
+    dispatch({ type: "SET_ACTIVE_PROJECT", projectId: project.id });
+  }
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-6 pb-32">
@@ -39,14 +49,14 @@ export function HomePage() {
                   <div className="flex items-center gap-2">
                     <div className="size-2 rounded-full bg-emerald-400" />
                     <span>{project.name}</span>
-                    <span className="text-muted-foreground text-xs ml-1">{project.path}</span>
+                    <span className="text-muted-foreground text-xs ml-1">{project.workspacePath}</span>
                   </div>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => void handleCreateProject()}>
             <FolderOpen className="size-3.5" />
             Open folder
           </Button>

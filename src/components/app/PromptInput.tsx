@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { OPENROUTER_API_KEY_HINT, streamOpenRouterText, validateOpenRouterApiKey } from "@/lib/openrouter";
+import { addMessage, createThread } from "@/lib/tauri-storage";
 import { cn } from "@/lib/utils";
 import {
   ArrowUp,
@@ -43,69 +44,77 @@ export function PromptInput({ variant = "chat", placeholder }: PromptInputProps)
 
     if (isGenerating) return;
 
-    const userInput = input;
-    const userMessage = {
-      id: `msg-${Date.now()}`,
-      role: "user" as const,
-      content: userInput,
-      timestamp: Date.now(),
-    };
-
-    const currentThread = state.threads.find((thread) => thread.id === state.activeThreadId);
-
-    const threadId = state.activeThreadId || `thread-${Date.now()}`;
-    const threadMessages = currentThread ? [...currentThread.messages, userMessage] : [userMessage];
-
-    if (!state.activeThreadId) {
-      dispatch({
-        type: "CREATE_THREAD",
-        thread: {
-          id: threadId,
-          title: userInput.slice(0, 50) + (userInput.length > 50 ? "..." : ""),
-          projectName: state.projects.find((p) => p.id === state.activeProjectId)?.name || "untitled",
-          messages: [userMessage],
-          fileChanges: [],
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          isActive: true,
-          totalAdditions: 0,
-          totalDeletions: 0,
-          unstagedCount: 0,
-          stagedCount: 0,
-        },
-      });
-      setInput("");
-      navigate(`/chat/${threadId}`);
-    } else {
-      dispatch({
-        type: "ADD_MESSAGE",
-        threadId: state.activeThreadId,
-        message: userMessage,
-      });
-      setInput("");
+    const userInput = input.trim();
+    const activeProjectId = state.activeProjectId;
+    if (!activeProjectId) {
+      return;
     }
 
-    const assistantMessageId = `msg-${Date.now()}-assistant`;
+    const currentThread = state.threads.find((thread) => thread.id === state.activeThreadId);
+    const previousMessages = currentThread?.messages ?? [];
+    setInput("");
+
+    let threadId = state.activeThreadId;
+    if (!threadId) {
+      const createdThread = await createThread({
+        projectId: activeProjectId,
+        title: userInput.slice(0, 50) + (userInput.length > 50 ? "..." : ""),
+      });
+      dispatch({ type: "UPSERT_THREAD", thread: createdThread });
+      dispatch({ type: "SET_ACTIVE_THREAD", threadId: createdThread.id });
+      threadId = createdThread.id;
+      navigate(`/chat/${threadId}`);
+    }
+    if (!threadId) return;
+
+    const userMessage = await addMessage({
+      threadId,
+      role: "user",
+      content: userInput,
+      mode: "build",
+    });
+
+    dispatch({
+      type: "ADD_MESSAGE",
+      threadId,
+      message: userMessage,
+    });
+
+    const assistantMessageId = `temp-agent-${Date.now()}`;
     dispatch({
       type: "ADD_MESSAGE",
       threadId,
       message: {
         id: assistantMessageId,
-        role: "assistant",
+        role: "agent",
         content: "",
         timestamp: Date.now(),
         isStreaming: true,
+        model: state.selectedModel.id,
+        provider: state.selectedModel.provider,
+        mode: "build",
       },
     });
 
+    const threadMessages = [...previousMessages, userMessage];
+
     const keyValidation = validateOpenRouterApiKey(state.settings.openRouterApiKey);
     if (!keyValidation.success) {
+      const savedAgentMessage = await addMessage({
+        threadId,
+        role: "agent",
+        content: `Missing OpenRouter key. Open Settings and add your key.\n\n${OPENROUTER_API_KEY_HINT}`,
+        mode: "build",
+        model: state.selectedModel.id,
+        provider: state.selectedModel.provider,
+        parentId: userMessage.id,
+      });
+
       dispatch({
-        type: "UPDATE_MESSAGE",
+        type: "REPLACE_MESSAGE",
         threadId,
         messageId: assistantMessageId,
-        content: `Missing OpenRouter key. Open Settings and add your key.\n\n${OPENROUTER_API_KEY_HINT}`,
-        isStreaming: false,
+        nextMessage: savedAgentMessage,
       });
       return;
     }
@@ -127,21 +136,39 @@ export function PromptInput({ variant = "chat", placeholder }: PromptInputProps)
         },
       });
 
+      const savedAgentMessage = await addMessage({
+        threadId,
+        role: "agent",
+        content: text || "No response received from model.",
+        mode: "build",
+        model: state.selectedModel.id,
+        provider: state.selectedModel.provider,
+        parentId: userMessage.id,
+      });
+
       dispatch({
-        type: "UPDATE_MESSAGE",
+        type: "REPLACE_MESSAGE",
         threadId,
         messageId: assistantMessageId,
-        content: text || "No response received from model.",
-        isStreaming: false,
+        nextMessage: savedAgentMessage,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to stream response.";
+      const savedAgentMessage = await addMessage({
+        threadId,
+        role: "agent",
+        content: `Error: ${message}`,
+        mode: "build",
+        model: state.selectedModel.id,
+        provider: state.selectedModel.provider,
+        parentId: userMessage.id,
+      });
+
       dispatch({
-        type: "UPDATE_MESSAGE",
+        type: "REPLACE_MESSAGE",
         threadId,
         messageId: assistantMessageId,
-        content: `Error: ${message}`,
-        isStreaming: false,
+        nextMessage: savedAgentMessage,
       });
     } finally {
       setIsGenerating(false);

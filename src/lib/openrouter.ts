@@ -95,7 +95,7 @@ export async function streamOpenRouterText({
   const result = streamText({
     model: openrouter.chat(modelId),
     messages: messages.map((message) => ({
-      role: message.role,
+      role: message.role === "agent" ? "assistant" : message.role,
       content: message.content,
     })),
   });

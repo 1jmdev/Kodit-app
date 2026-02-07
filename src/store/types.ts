@@ -1,4 +1,4 @@
-export type MessageRole = "user" | "assistant" | "system";
+export type MessageRole = "user" | "agent" | "system";
 
 export interface FileEdit {
   id: string;
@@ -35,6 +35,17 @@ export interface Message {
   role: MessageRole;
   content: string;
   timestamp: number;
+  model?: string;
+  provider?: string;
+  mode?: "build";
+  parentId?: string | null;
+  tokens?: {
+    input: number;
+    output: number;
+    reasoning: number;
+    cacheRead: number;
+    cacheWrite: number;
+  };
   fileEdits?: FileEdit[];
   isStreaming?: boolean;
   toolCalls?: ToolCall[];
@@ -51,12 +62,11 @@ export interface ToolCall {
 export interface Thread {
   id: string;
   title: string;
-  projectName: string;
+  projectId: string;
   messages: Message[];
   fileChanges: FileChange[];
   createdAt: number;
   updatedAt: number;
-  isActive: boolean;
   totalAdditions: number;
   totalDeletions: number;
   unstagedCount: number;
@@ -66,8 +76,9 @@ export interface Thread {
 export interface Project {
   id: string;
   name: string;
-  path: string;
-  branch: string;
+  workspacePath: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface ModelConfig {
@@ -91,6 +102,8 @@ export interface AppState {
   settings: SettingsConfig;
   modelsLoading: boolean;
   modelsError: string | null;
+  storageLoading: boolean;
+  storageError: string | null;
   sidebarCollapsed: boolean;
   diffPanelOpen: boolean;
 }

@@ -8,9 +8,102 @@ import { ChatPage } from "@/pages/ChatPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { loadStoredSettings } from "@/lib/settings-storage";
 import { fetchOpenRouterModels, validateOpenRouterApiKey } from "@/lib/openrouter";
+import {
+  initializeStorage,
+  listProjects,
+  createDefaultProjectIfNeeded,
+  listThreads,
+  listMessages,
+} from "@/lib/tauri-storage";
 
 function App() {
   const [state, dispatch] = useReducer(appReducer, initialState);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function bootstrapStorage() {
+      dispatch({ type: "SET_STORAGE_LOADING", loading: true });
+      dispatch({ type: "SET_STORAGE_ERROR", error: null });
+
+      try {
+        await initializeStorage();
+        let projects = await listProjects();
+
+        if (projects.length === 0) {
+          const defaultProject = await createDefaultProjectIfNeeded();
+          projects = [defaultProject];
+        }
+
+        if (cancelled) return;
+
+        dispatch({ type: "SET_PROJECTS", projects });
+        dispatch({ type: "SET_ACTIVE_PROJECT", projectId: projects[0].id });
+      } catch (error) {
+        if (!cancelled) {
+          const message = error instanceof Error ? error.message : "Failed to initialize storage";
+          dispatch({ type: "SET_STORAGE_ERROR", error: message });
+        }
+      } finally {
+        if (!cancelled) {
+          dispatch({ type: "SET_STORAGE_LOADING", loading: false });
+        }
+      }
+    }
+
+    void bootstrapStorage();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const activeProjectId = state.activeProjectId;
+    if (!activeProjectId) {
+      dispatch({ type: "SET_THREADS", threads: [] });
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadProjectThreads() {
+      try {
+        const projectThreads = await listThreads(activeProjectId!);
+        const hydratedThreads = await Promise.all(
+          projectThreads.map(async (thread) => {
+            const messages = await listMessages(thread.id);
+            return {
+              ...thread,
+              messages,
+              updatedAt: messages.length > 0 ? messages[messages.length - 1].timestamp : thread.updatedAt,
+            };
+          }),
+        );
+
+        if (!cancelled) {
+          dispatch({ type: "SET_THREADS", threads: hydratedThreads });
+          if (
+            state.activeThreadId &&
+            !hydratedThreads.some((thread) => thread.id === state.activeThreadId)
+          ) {
+            dispatch({ type: "SET_ACTIVE_THREAD", threadId: null });
+          }
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const message = error instanceof Error ? error.message : "Failed to load threads";
+          dispatch({ type: "SET_STORAGE_ERROR", error: message });
+        }
+      }
+    }
+
+    void loadProjectThreads();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state.activeProjectId]);
 
   useEffect(() => {
     const stored = loadStoredSettings();
@@ -63,11 +156,17 @@ function App() {
             <div className="flex flex-1 overflow-hidden">
               <AppSidebar />
               <main className="flex flex-1 flex-col overflow-hidden">
-                <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/chat/:threadId" element={<ChatPage />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                </Routes>
+                {state.storageLoading ? (
+                  <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+                    Loading workspace...
+                  </div>
+                ) : (
+                  <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/chat/:threadId" element={<ChatPage />} />
+                    <Route path="/settings" element={<SettingsPage />} />
+                  </Routes>
+                )}
               </main>
             </div>
           </div>

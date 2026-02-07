@@ -22,6 +22,7 @@ export function TopBar() {
   const { state } = useAppStore();
   const navigate = useNavigate();
   const activeThread = state.threads.find((t) => t.id === state.activeThreadId);
+  const activeProject = state.projects.find((project) => project.id === activeThread?.projectId);
 
   if (!activeThread) return null;
 
@@ -33,7 +34,7 @@ export function TopBar() {
       {/* Left: Thread title + project */}
       <div className="flex items-center gap-2 min-w-0">
         <h1 className="text-[13px] font-semibold truncate">{activeThread.title}</h1>
-        <span className="text-[12px] text-muted-foreground/60 shrink-0">{activeThread.projectName}</span>
+        <span className="text-[12px] text-muted-foreground/60 shrink-0">{activeProject?.name || "Unknown project"}</span>
         <span className="text-muted-foreground/30 text-xs">...</span>
       </div>
 

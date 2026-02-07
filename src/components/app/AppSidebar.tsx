@@ -192,7 +192,7 @@ export function AppSidebar() {
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    {thread.isActive && (
+                    {thread.id === state.activeThreadId && (
                       <Clipboard className="size-2.5 opacity-40" />
                     )}
                     <span className="text-[11px] opacity-50">
@@ -212,7 +212,10 @@ export function AppSidebar() {
         {state.projects.slice(0, 5).map((project) => (
           <button
             key={project.id}
-            onClick={() => dispatch({ type: "SET_ACTIVE_PROJECT", projectId: project.id })}
+            onClick={() => {
+              dispatch({ type: "SET_ACTIVE_PROJECT", projectId: project.id });
+              navigate("/");
+            }}
             className={cn(
               "flex items-center gap-2.5 rounded-lg px-2.5 py-[6px] text-[13px] w-full text-left transition-colors mx-0.5",
               project.id === state.activeProjectId

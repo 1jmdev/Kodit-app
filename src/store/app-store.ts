@@ -1,12 +1,12 @@
 import { createContext, useContext } from "react";
 import type { AppState, Thread, Message, ModelConfig } from "./types";
-import { mockThreads, mockProjects, mockModels, defaultModel } from "./mock-data";
+import { mockModels, defaultModel } from "./mock-data";
 
 export const initialState: AppState = {
-  threads: mockThreads,
-  activeThreadId: "thread-1",
-  projects: mockProjects,
-  activeProjectId: "proj-1",
+  threads: [],
+  activeThreadId: null,
+  projects: [],
+  activeProjectId: null,
   availableModels: mockModels,
   selectedModel: defaultModel,
   settings: {
@@ -14,13 +14,21 @@ export const initialState: AppState = {
   },
   modelsLoading: false,
   modelsError: null,
+  storageLoading: true,
+  storageError: null,
   sidebarCollapsed: false,
   diffPanelOpen: true,
 };
 
 export type AppAction =
+  | { type: "SET_STORAGE_LOADING"; loading: boolean }
+  | { type: "SET_STORAGE_ERROR"; error: string | null }
+  | { type: "SET_PROJECTS"; projects: AppState["projects"] }
+  | { type: "SET_THREADS"; threads: Thread[] }
+  | { type: "SET_THREAD_MESSAGES"; threadId: string; messages: Message[] }
+  | { type: "UPSERT_THREAD"; thread: Thread }
+  | { type: "REPLACE_MESSAGE"; threadId: string; messageId: string; nextMessage: Message }
   | { type: "SET_ACTIVE_THREAD"; threadId: string | null }
-  | { type: "CREATE_THREAD"; thread: Thread }
   | { type: "DELETE_THREAD"; threadId: string }
   | { type: "ADD_MESSAGE"; threadId: string; message: Message }
   | {
@@ -42,14 +50,59 @@ export type AppAction =
 
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
-    case "SET_ACTIVE_THREAD":
-      return { ...state, activeThreadId: action.threadId };
-    case "CREATE_THREAD":
+    case "SET_STORAGE_LOADING":
+      return { ...state, storageLoading: action.loading };
+    case "SET_STORAGE_ERROR":
+      return { ...state, storageError: action.error };
+    case "SET_PROJECTS":
+      return { ...state, projects: action.projects };
+    case "SET_THREADS":
+      return { ...state, threads: action.threads };
+    case "SET_THREAD_MESSAGES":
       return {
         ...state,
-        threads: [action.thread, ...state.threads],
-        activeThreadId: action.thread.id,
+        threads: state.threads.map((thread) =>
+          thread.id === action.threadId
+            ? {
+                ...thread,
+                messages: action.messages,
+                updatedAt:
+                  action.messages.length > 0
+                    ? action.messages[action.messages.length - 1].timestamp
+                    : thread.updatedAt,
+              }
+            : thread,
+        ),
       };
+    case "UPSERT_THREAD": {
+      const existing = state.threads.find((t) => t.id === action.thread.id);
+      if (!existing) {
+        return { ...state, threads: [action.thread, ...state.threads] };
+      }
+      return {
+        ...state,
+        threads: state.threads.map((thread) =>
+          thread.id === action.thread.id ? action.thread : thread
+        ),
+      };
+    }
+    case "REPLACE_MESSAGE":
+      return {
+        ...state,
+        threads: state.threads.map((thread) =>
+          thread.id === action.threadId
+            ? {
+                ...thread,
+                messages: thread.messages.map((message) =>
+                  message.id === action.messageId ? action.nextMessage : message
+                ),
+                updatedAt: action.nextMessage.timestamp,
+              }
+            : thread
+        ),
+      };
+    case "SET_ACTIVE_THREAD":
+      return { ...state, activeThreadId: action.threadId };
     case "DELETE_THREAD":
       return {
         ...state,
@@ -92,7 +145,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       };
     }
     case "SET_ACTIVE_PROJECT":
-      return { ...state, activeProjectId: action.projectId };
+      return { ...state, activeProjectId: action.projectId, activeThreadId: null, threads: [] };
     case "SET_AVAILABLE_MODELS": {
       if (action.models.length === 0) {
         return state;
