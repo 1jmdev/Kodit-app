@@ -9,7 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { mockModels } from "@/store/mock-data";
+import { OPENROUTER_API_KEY_HINT, streamOpenRouterText, validateOpenRouterApiKey } from "@/lib/openrouter";
 import { cn } from "@/lib/utils";
 import {
   ArrowUp,
@@ -27,6 +27,7 @@ interface PromptInputProps {
 export function PromptInput({ variant = "chat", placeholder }: PromptInputProps) {
   const { state, dispatch } = useAppStore();
   const [input, setInput] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const navigate = useNavigate();
 
@@ -37,26 +38,32 @@ export function PromptInput({ variant = "chat", placeholder }: PromptInputProps)
     }
   }, [input]);
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!input.trim()) return;
 
+    if (isGenerating) return;
+
+    const userInput = input;
+    const userMessage = {
+      id: `msg-${Date.now()}`,
+      role: "user" as const,
+      content: userInput,
+      timestamp: Date.now(),
+    };
+
+    const currentThread = state.threads.find((thread) => thread.id === state.activeThreadId);
+
+    const threadId = state.activeThreadId || `thread-${Date.now()}`;
+    const threadMessages = currentThread ? [...currentThread.messages, userMessage] : [userMessage];
+
     if (!state.activeThreadId) {
-      // Create new thread
-      const threadId = `thread-${Date.now()}`;
       dispatch({
         type: "CREATE_THREAD",
         thread: {
           id: threadId,
-          title: input.slice(0, 50) + (input.length > 50 ? "..." : ""),
+          title: userInput.slice(0, 50) + (userInput.length > 50 ? "..." : ""),
           projectName: state.projects.find((p) => p.id === state.activeProjectId)?.name || "untitled",
-          messages: [
-            {
-              id: `msg-${Date.now()}`,
-              role: "user",
-              content: input,
-              timestamp: Date.now(),
-            },
-          ],
+          messages: [userMessage],
           fileChanges: [],
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -73,21 +80,78 @@ export function PromptInput({ variant = "chat", placeholder }: PromptInputProps)
       dispatch({
         type: "ADD_MESSAGE",
         threadId: state.activeThreadId,
-        message: {
-          id: `msg-${Date.now()}`,
-          role: "user",
-          content: input,
-          timestamp: Date.now(),
-        },
+        message: userMessage,
       });
       setInput("");
+    }
+
+    const assistantMessageId = `msg-${Date.now()}-assistant`;
+    dispatch({
+      type: "ADD_MESSAGE",
+      threadId,
+      message: {
+        id: assistantMessageId,
+        role: "assistant",
+        content: "",
+        timestamp: Date.now(),
+        isStreaming: true,
+      },
+    });
+
+    const keyValidation = validateOpenRouterApiKey(state.settings.openRouterApiKey);
+    if (!keyValidation.success) {
+      dispatch({
+        type: "UPDATE_MESSAGE",
+        threadId,
+        messageId: assistantMessageId,
+        content: `Missing OpenRouter key. Open Settings and add your key.\n\n${OPENROUTER_API_KEY_HINT}`,
+        isStreaming: false,
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const text = await streamOpenRouterText({
+        apiKey: state.settings.openRouterApiKey,
+        modelId: state.selectedModel.id,
+        messages: threadMessages,
+        onChunk: (chunk) => {
+          dispatch({
+            type: "UPDATE_MESSAGE",
+            threadId,
+            messageId: assistantMessageId,
+            content: chunk,
+            isStreaming: true,
+          });
+        },
+      });
+
+      dispatch({
+        type: "UPDATE_MESSAGE",
+        threadId,
+        messageId: assistantMessageId,
+        content: text || "No response received from model.",
+        isStreaming: false,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to stream response.";
+      dispatch({
+        type: "UPDATE_MESSAGE",
+        threadId,
+        messageId: assistantMessageId,
+        content: `Error: ${message}`,
+        isStreaming: false,
+      });
+    } finally {
+      setIsGenerating(false);
     }
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit();
+      void handleSubmit();
     }
   }
 
@@ -153,7 +217,7 @@ export function PromptInput({ variant = "chat", placeholder }: PromptInputProps)
             </Tooltip>
 
             {/* Model selector */}
-            <DropdownMenu>
+             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
                   <button className="ml-1.5 flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors">
@@ -164,7 +228,7 @@ export function PromptInput({ variant = "chat", placeholder }: PromptInputProps)
                 }
               />
               <DropdownMenuContent align="start" side="top" sideOffset={8}>
-                {mockModels.map((model) => (
+                {state.availableModels.map((model) => (
                   <DropdownMenuItem
                     key={model.id}
                     onClick={() => dispatch({ type: "SET_MODEL", model })}
@@ -180,13 +244,13 @@ export function PromptInput({ variant = "chat", placeholder }: PromptInputProps)
           </div>
 
           {/* Right: submit */}
-          <Button
-            size="icon-sm"
-            onClick={handleSubmit}
-            disabled={!input.trim()}
-            className={cn(
-              "rounded-lg transition-all",
-              input.trim()
+            <Button
+              size="icon-sm"
+              onClick={() => void handleSubmit()}
+              disabled={!input.trim() || isGenerating}
+              className={cn(
+                "rounded-lg transition-all",
+                input.trim()
                 ? "bg-foreground text-background hover:bg-foreground/80"
                 : "bg-muted text-muted-foreground"
             )}

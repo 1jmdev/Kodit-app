@@ -48,10 +48,15 @@ export function AppSidebar() {
     dispatch({ type: "TOGGLE_SIDEBAR" });
   }
 
+  function handleOpenSettings() {
+    navigate("/settings");
+  }
+
   const navItems = [
     { id: "new", label: "New thread", icon: Plus, action: handleNewThread },
     { id: "automations", label: "Automations", icon: Zap },
     { id: "skills", label: "Skills", icon: Sparkles },
+    { id: "settings", label: "Settings", icon: SlidersHorizontal, action: handleOpenSettings },
   ];
 
   // Collapsed sidebar

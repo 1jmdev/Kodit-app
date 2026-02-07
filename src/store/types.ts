@@ -77,12 +77,20 @@ export interface ModelConfig {
   qualityLevel: "Low" | "Medium" | "High" | "Extra High";
 }
 
+export interface SettingsConfig {
+  openRouterApiKey: string;
+}
+
 export interface AppState {
   threads: Thread[];
   activeThreadId: string | null;
   projects: Project[];
   activeProjectId: string | null;
+  availableModels: ModelConfig[];
   selectedModel: ModelConfig;
+  settings: SettingsConfig;
+  modelsLoading: boolean;
+  modelsError: string | null;
   sidebarCollapsed: boolean;
   diffPanelOpen: boolean;
 }

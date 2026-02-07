@@ -1,4 +1,5 @@
 import { useAppStore } from "@/store/app-store";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,6 +20,7 @@ import {
 
 export function TopBar() {
   const { state } = useAppStore();
+  const navigate = useNavigate();
   const activeThread = state.threads.find((t) => t.id === state.activeThreadId);
 
   if (!activeThread) return null;
@@ -90,7 +92,12 @@ export function TopBar() {
           <Button variant="ghost" size="icon-xs" className="text-muted-foreground/60 hover:text-foreground">
             <Copy className="size-3.5" />
           </Button>
-          <Button variant="ghost" size="icon-xs" className="text-muted-foreground/60 hover:text-foreground">
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className="text-muted-foreground/60 hover:text-foreground"
+            onClick={() => navigate("/settings")}
+          >
             <Settings className="size-3.5" />
           </Button>
         </div>

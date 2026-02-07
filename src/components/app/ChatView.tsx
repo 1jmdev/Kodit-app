@@ -162,6 +162,7 @@ function MessageBubble({ message }: { message: Message }) {
               </p>
             );
           })}
+          {message.isStreaming && !isUser && <span className="inline-block h-4 w-1 animate-pulse rounded-sm bg-foreground/70 align-middle" />}
         </div>
 
         {/* File edits summary */}

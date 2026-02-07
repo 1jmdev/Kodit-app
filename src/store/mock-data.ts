@@ -34,11 +34,11 @@ export const mockProjects: Project[] = [
 ];
 
 export const mockModels: ModelConfig[] = [
-  { id: "gpt-5.2-codex", name: "GPT-5.2-Codex", provider: "OpenAI", qualityLevel: "Extra High" },
-  { id: "gpt-5-nano", name: "GPT-5-Nano", provider: "OpenAI", qualityLevel: "Low" },
-  { id: "gpt-5.2", name: "GPT-5.2", provider: "OpenAI", qualityLevel: "High" },
-  { id: "claude-opus", name: "Claude Opus", provider: "Anthropic", qualityLevel: "Extra High" },
-  { id: "claude-sonnet", name: "Claude Sonnet", provider: "Anthropic", qualityLevel: "High" },
+  { id: "openai/gpt-4o-mini", name: "GPT-4o Mini", provider: "OpenAI", qualityLevel: "Medium" },
+  { id: "openai/gpt-4.1-mini", name: "GPT-4.1 Mini", provider: "OpenAI", qualityLevel: "High" },
+  { id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", provider: "Anthropic", qualityLevel: "Extra High" },
+  { id: "meta-llama/llama-3.1-70b-instruct", name: "Llama 3.1 70B", provider: "Meta", qualityLevel: "High" },
+  { id: "mistralai/mistral-small", name: "Mistral Small", provider: "Mistral", qualityLevel: "Medium" },
 ];
 
 const mockFileChanges: FileChange[] = [
