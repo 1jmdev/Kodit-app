@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
+import { X } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
+import type { ModelConfig } from "@/store/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,11 +16,90 @@ import { saveAuthApiKey } from "@/lib/auth/auth-storage";
 export function SettingsPage() {
   const { state, dispatch } = useAppStore();
   const [localError, setLocalError] = useState<string | null>(null);
+  const [modelSearch, setModelSearch] = useState("");
   const [apiKeyInputByProvider, setApiKeyInputByProvider] = useState<Record<string, string>>(
     state.settings.apiKeys,
   );
 
   const activeProvider = useMemo(() => getProviderPreset(DEFAULT_PROVIDER_ID), []);
+
+  function fuzzyScore(needle: string, haystack: string): number {
+    if (!needle) {
+      return 0;
+    }
+
+    let score = 0;
+    let haystackIndex = 0;
+    let previousMatchIndex = -1;
+
+    for (let i = 0; i < needle.length; i += 1) {
+      const char = needle[i];
+      const foundIndex = haystack.indexOf(char, haystackIndex);
+      if (foundIndex === -1) {
+        return Number.NEGATIVE_INFINITY;
+      }
+
+      score += 1;
+      if (previousMatchIndex !== -1 && foundIndex === previousMatchIndex + 1) {
+        score += 2;
+      }
+      if (foundIndex === 0 || haystack[foundIndex - 1] === " " || haystack[foundIndex - 1] === "/" || haystack[foundIndex - 1] === "-") {
+        score += 1;
+      }
+
+      previousMatchIndex = foundIndex;
+      haystackIndex = foundIndex + 1;
+    }
+
+    return score;
+  }
+
+  const filteredModels = useMemo(() => {
+    const query = modelSearch.trim().toLowerCase();
+    if (!query) {
+      return [];
+    }
+    const terms = query.split(/\s+/).filter(Boolean);
+
+    return state.availableModels
+      .map((model) => {
+        const searchable = `${model.name} ${model.id} ${model.provider}`.toLowerCase();
+        let score = 0;
+        for (const term of terms) {
+          const termScore = fuzzyScore(term, searchable);
+          if (!Number.isFinite(termScore)) {
+            return { model, score: Number.NEGATIVE_INFINITY };
+          }
+          score += termScore;
+          if (searchable.includes(term)) {
+            score += 3;
+          }
+        }
+
+        return {
+          model,
+          score,
+        };
+      })
+      .filter((entry) => Number.isFinite(entry.score))
+      .sort((a, b) => b.score - a.score || a.model.name.localeCompare(b.model.name))
+      .map((entry) => entry.model)
+      .slice(0, 20);
+  }, [modelSearch, state.availableModels]);
+
+  function persistSettings(next: {
+    apiKeys?: Record<string, string>;
+    window?: typeof state.settings.window;
+    modelProfiles?: ModelConfig[];
+    selectedModelId?: string;
+  }) {
+    saveStoredSettings({
+      apiKeys: next.apiKeys ?? state.settings.apiKeys,
+      window: next.window ?? state.settings.window,
+      modelProfiles: next.modelProfiles ?? state.settings.modelProfiles,
+      selectedModelId: next.selectedModelId ?? state.settings.selectedModelId,
+    });
+  }
 
   async function refreshModels(providerId: string, apiKey: string) {
     dispatch({ type: "SET_MODELS_LOADING", loading: true });
@@ -53,10 +134,7 @@ export function SettingsPage() {
       [providerId]: apiKey,
     };
 
-    saveStoredSettings({
-      apiKeys: nextApiKeys,
-      window: state.settings.window,
-    });
+    persistSettings({ apiKeys: nextApiKeys });
 
     await saveAuthApiKey(providerId, apiKey);
 
@@ -87,23 +165,60 @@ export function SettingsPage() {
 
   function handleToggleWindowControls(show: boolean) {
     dispatch({ type: "SET_SHOW_WINDOW_CONTROLS", show });
-    saveStoredSettings({
-      apiKeys: state.settings.apiKeys,
-      window: { ...state.settings.window, showWindowControls: show },
+    persistSettings({ window: { ...state.settings.window, showWindowControls: show } });
+  }
+
+  function handleAddModelProfile(model: ModelConfig) {
+    if (state.settings.modelProfiles.some((profile) => profile.id === model.id)) {
+      return;
+    }
+
+    const nextProfiles = [...state.settings.modelProfiles, model];
+    const nextSelectedModelId = state.settings.selectedModelId || model.id;
+
+    dispatch({
+      type: "SET_MODEL_PROFILES",
+      profiles: nextProfiles,
+      selectedModelId: nextSelectedModelId,
     });
+    persistSettings({ modelProfiles: nextProfiles, selectedModelId: nextSelectedModelId });
+  }
+
+  function handleRemoveModelProfile(modelId: string) {
+    if (state.settings.modelProfiles.length <= 1) {
+      return;
+    }
+
+    const nextProfiles = state.settings.modelProfiles.filter((profile) => profile.id !== modelId);
+    const nextSelectedModelId =
+      state.settings.selectedModelId === modelId
+        ? (nextProfiles[0]?.id ?? state.selectedModel.id)
+        : state.settings.selectedModelId;
+
+    dispatch({
+      type: "SET_MODEL_PROFILES",
+      profiles: nextProfiles,
+      selectedModelId: nextSelectedModelId,
+    });
+    persistSettings({ modelProfiles: nextProfiles, selectedModelId: nextSelectedModelId });
+  }
+
+  function handleSelectModelProfile(model: ModelConfig) {
+    dispatch({ type: "SET_MODEL", model });
+    persistSettings({ selectedModelId: model.id });
   }
 
   return (
-    <div className="flex flex-1 overflow-auto px-6 py-8">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className="h-full overflow-y-auto px-6 py-8">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 pb-16">
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
           <p className="text-sm text-muted-foreground">
-            Configure provider presets, sync models, and customize your workspace.
+            Configure provider presets, model profiles, and your workspace behavior.
           </p>
         </div>
 
-        <Card>
+        <Card className="overflow-visible">
           <CardHeader>
             <CardTitle>Window Controls</CardTitle>
             <CardDescription>
@@ -137,7 +252,7 @@ export function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor={`${preset.id}-api-key`}>API key</Label>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
                     id={`${preset.id}-api-key`}
                     value={apiKeyInputByProvider[preset.id] ?? state.settings.apiKeys[preset.id] ?? ""}
@@ -152,7 +267,11 @@ export function SettingsPage() {
                     spellCheck={false}
                     type="password"
                   />
-                  <Button onClick={() => void handleSaveApiKey(preset.id)} disabled={state.modelsLoading}>
+                  <Button
+                    className="sm:shrink-0"
+                    onClick={() => void handleSaveApiKey(preset.id)}
+                    disabled={state.modelsLoading}
+                  >
                     Save key
                   </Button>
                 </div>
@@ -171,8 +290,8 @@ export function SettingsPage() {
                   >
                     {state.modelsLoading ? "Refreshing models..." : "Refresh models"}
                   </Button>
-                  <Badge variant="outline">{state.availableModels.length} models loaded</Badge>
-                  <Badge variant="outline">Selected: {state.selectedModel.name}</Badge>
+                  <Badge variant="outline">{state.availableModels.length} synced models</Badge>
+                  <Badge variant="outline">{state.settings.modelProfiles.length} profiles</Badge>
                 </div>
               )}
             </CardContent>
@@ -181,22 +300,91 @@ export function SettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Available Models</CardTitle>
+            <CardTitle>Model Profiles</CardTitle>
             <CardDescription>
-              The prompt composer uses this list when you choose a model for generation.
+              The model selector now shows only profiles defined here.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {state.availableModels.slice(0, 30).map((model) => (
-                <div
-                  key={model.id}
-                  className="rounded-md border border-border/60 bg-muted/20 px-3 py-2"
-                >
-                  <div className="truncate text-sm font-medium">{model.name}</div>
-                  <div className="truncate text-xs text-muted-foreground">{model.id}</div>
-                </div>
-              ))}
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="model-search">Search synced models</Label>
+              <Input
+                id="model-search"
+                value={modelSearch}
+                onChange={(event) => setModelSearch(event.target.value)}
+                placeholder="Search by model name or id"
+              />
+              <div className="max-h-[15.5rem] overflow-y-auto rounded-md border border-border/60 bg-muted/20 p-2">
+                {modelSearch.trim().length === 0 && (
+                  <p className="px-2 py-1 text-xs text-muted-foreground">
+                    Enter a search query and add models as profiles.
+                  </p>
+                )}
+
+                {modelSearch.trim().length > 0 && filteredModels.length === 0 && (
+                  <p className="px-2 py-1 text-xs text-muted-foreground">No matching models found.</p>
+                )}
+
+                {filteredModels.map((model) => {
+                  const exists = state.settings.modelProfiles.some((profile) => profile.id === model.id);
+                  return (
+                    <div
+                      key={model.id}
+                      className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-background/40"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium">{model.name}</div>
+                        <div className="truncate text-xs text-muted-foreground">{model.id}</div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={exists}
+                        onClick={() => handleAddModelProfile(model)}
+                      >
+                        {exists ? "Added" : "Add"}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Configured profiles</Label>
+              <div className="space-y-2">
+                {state.settings.modelProfiles.map((profile) => {
+                  const isSelected = state.settings.selectedModelId === profile.id;
+                  return (
+                    <div
+                      key={profile.id}
+                      className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/10 px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium">{profile.name}</div>
+                        <div className="truncate text-xs text-muted-foreground">{profile.id}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant={isSelected ? "default" : "outline"}
+                          onClick={() => handleSelectModelProfile(profile)}
+                        >
+                          {isSelected ? "Using" : "Use"}
+                        </Button>
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          onClick={() => handleRemoveModelProfile(profile.id)}
+                          disabled={state.settings.modelProfiles.length <= 1}
+                        >
+                          <X className="size-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </CardContent>
         </Card>

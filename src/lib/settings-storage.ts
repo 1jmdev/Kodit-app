@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { defaultModel } from "@/store/mock-data";
 
 const STORAGE_KEY = "kodit.settings";
 
@@ -11,6 +12,18 @@ const settingsSchema = z.object({
   window: windowSettingsSchema.default({
     showWindowControls: true,
   }),
+  modelProfiles: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        providerId: z.string(),
+        provider: z.string(),
+        qualityLevel: z.enum(["Low", "Medium", "High", "Extra High"]),
+      }),
+    )
+    .default([defaultModel]),
+  selectedModelId: z.string().default(defaultModel.id),
 });
 
 export type StoredSettings = z.infer<typeof settingsSchema>;
@@ -22,6 +35,8 @@ export const defaultWindowSettings = {
 const defaultSettings: StoredSettings = {
   apiKeys: {},
   window: defaultWindowSettings,
+  modelProfiles: [defaultModel],
+  selectedModelId: defaultModel.id,
 };
 
 export function loadStoredSettings(): StoredSettings {
@@ -44,6 +59,8 @@ export function loadStoredSettings(): StoredSettings {
   const legacySchema = z.object({
     openRouterApiKey: z.string().optional(),
     window: windowSettingsSchema.optional(),
+    modelProfiles: settingsSchema.shape.modelProfiles.optional(),
+    selectedModelId: z.string().optional(),
   });
 
   const parsed = settingsSchema.safeParse(json);
@@ -60,7 +77,17 @@ export function loadStoredSettings(): StoredSettings {
           }
         : {},
       window: legacy.data.window ?? defaultWindowSettings,
+      modelProfiles: legacy.data.modelProfiles ?? [defaultModel],
+      selectedModelId: legacy.data.selectedModelId ?? legacy.data.modelProfiles?.[0]?.id ?? defaultModel.id,
     };
+  }
+
+  if (parsed.data.modelProfiles.length === 0) {
+    return { ...parsed.data, modelProfiles: [defaultModel], selectedModelId: defaultModel.id };
+  }
+
+  if (!parsed.data.modelProfiles.some((model) => model.id === parsed.data.selectedModelId)) {
+    return { ...parsed.data, selectedModelId: parsed.data.modelProfiles[0].id };
   }
 
   return parsed.data;

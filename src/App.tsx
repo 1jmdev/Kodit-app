@@ -136,6 +136,12 @@ function App() {
       if (stored.window) {
         dispatch({ type: "SET_WINDOW_SETTINGS", settings: stored.window });
       }
+
+      dispatch({
+        type: "SET_MODEL_PROFILES",
+        profiles: stored.modelProfiles,
+        selectedModelId: stored.selectedModelId,
+      });
     }
 
     void bootstrapSettings();

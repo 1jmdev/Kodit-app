@@ -33,6 +33,9 @@ interface PromptInputProps {
 
 export function PromptInput({ variant = "chat", placeholder, pendingProject, onPendingProjectSaved }: PromptInputProps) {
   const { state, dispatch } = useAppStore();
+  const modelProfiles = state.settings.modelProfiles.length > 0
+    ? state.settings.modelProfiles
+    : [state.selectedModel];
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -309,8 +312,8 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
                   </button>
                 }
               />
-              <DropdownMenuContent align="start" side="top" sideOffset={8}>
-                {state.availableModels.map((model) => (
+              <DropdownMenuContent align="start" side="top" sideOffset={8} className="max-h-72 w-80 overflow-y-auto">
+                {modelProfiles.map((model) => (
                   <DropdownMenuItem
                     key={model.id}
                     onClick={() => dispatch({ type: "SET_MODEL", model })}

@@ -96,6 +96,8 @@ export interface WindowSettings {
 export interface SettingsConfig {
   apiKeys: Record<string, string>;
   window: WindowSettings;
+  modelProfiles: ModelConfig[];
+  selectedModelId: string;
 }
 
 export interface AppState {

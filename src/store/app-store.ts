@@ -14,6 +14,8 @@ export const initialState: AppState = {
     window: {
       showWindowControls: true,
     },
+    modelProfiles: [defaultModel],
+    selectedModelId: defaultModel.id,
   },
   modelsLoading: false,
   modelsError: null,
@@ -45,6 +47,7 @@ export type AppAction =
   | { type: "SET_ACTIVE_PROJECT"; projectId: string }
   | { type: "SET_AVAILABLE_MODELS"; models: ModelConfig[] }
   | { type: "SET_PROVIDER_API_KEY"; providerId: string; apiKey: string }
+  | { type: "SET_MODEL_PROFILES"; profiles: ModelConfig[]; selectedModelId?: string }
   | { type: "SET_MODELS_LOADING"; loading: boolean }
   | { type: "SET_MODELS_ERROR"; error: string | null }
   | { type: "SET_MODEL"; model: ModelConfig }
@@ -176,11 +179,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         return state;
       }
 
-      const selectedModel = action.models.find((model) => model.id === state.selectedModel.id) || action.models[0];
       return {
         ...state,
         availableModels: action.models,
-        selectedModel,
       };
     }
     case "SET_PROVIDER_API_KEY":
@@ -194,12 +195,39 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           },
         },
       };
+    case "SET_MODEL_PROFILES": {
+      const dedupedProfiles = action.profiles.filter(
+        (model, index, models) => models.findIndex((candidate) => candidate.id === model.id) === index,
+      );
+      const nextSelectedModelId = action.selectedModelId ?? state.settings.selectedModelId;
+      const selectedModel =
+        dedupedProfiles.find((model) => model.id === nextSelectedModelId) ??
+        dedupedProfiles[0] ??
+        state.selectedModel;
+
+      return {
+        ...state,
+        selectedModel,
+        settings: {
+          ...state.settings,
+          modelProfiles: dedupedProfiles,
+          selectedModelId: selectedModel.id,
+        },
+      };
+    }
     case "SET_MODELS_LOADING":
       return { ...state, modelsLoading: action.loading };
     case "SET_MODELS_ERROR":
       return { ...state, modelsError: action.error };
     case "SET_MODEL":
-      return { ...state, selectedModel: action.model };
+      return {
+        ...state,
+        selectedModel: action.model,
+        settings: {
+          ...state.settings,
+          selectedModelId: action.model.id,
+        },
+      };
     case "TOGGLE_SIDEBAR":
       return { ...state, sidebarCollapsed: !state.sidebarCollapsed };
     case "TOGGLE_DIFF_PANEL":
