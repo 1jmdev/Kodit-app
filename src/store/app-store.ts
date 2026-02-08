@@ -129,7 +129,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         threads: state.threads.map((t) =>
           t.id === action.threadId
-            ? { ...t, messages: [...t.messages, action.message], updatedAt: Date.now() }
+            ? { ...t, messages: [...t.messages, action.message], updatedAt: action.message.timestamp }
             : t
         ),
       };
@@ -141,7 +141,6 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           t.id === action.threadId
             ? {
                 ...t,
-                updatedAt: Date.now(),
                 messages: t.messages.map((m) =>
                   m.id === action.messageId
                     ? {
@@ -158,7 +157,20 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       };
     }
     case "SET_ACTIVE_PROJECT":
-      return { ...state, activeProjectId: action.projectId, activeThreadId: null };
+      return {
+        ...state,
+        activeProjectId: action.projectId,
+        activeThreadId: (() => {
+          if (!state.activeThreadId) {
+            return null;
+          }
+          const activeThread = state.threads.find((thread) => thread.id === state.activeThreadId);
+          if (!activeThread) {
+            return null;
+          }
+          return activeThread.projectId === action.projectId ? state.activeThreadId : null;
+        })(),
+      };
     case "SET_AVAILABLE_MODELS": {
       if (action.models.length === 0) {
         return state;

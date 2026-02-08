@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { memo, useRef, useEffect, useMemo } from "react";
 import { useAppStore } from "@/store/app-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,7 @@ import {
   Undo2,
 } from "lucide-react";
 
-function ToolCallItem({ toolCall }: { toolCall: ToolCall }) {
+const ToolCallItem = memo(function ToolCallItem({ toolCall }: { toolCall: ToolCall }) {
   return (
     <div className="flex items-center gap-2 py-1 text-sm text-muted-foreground">
       <div className="flex items-center gap-1.5">
@@ -32,9 +32,9 @@ function ToolCallItem({ toolCall }: { toolCall: ToolCall }) {
       </div>
     </div>
   );
-}
+});
 
-function FileEditSummary({ edits }: { edits: FileEdit[] }) {
+const FileEditSummary = memo(function FileEditSummary({ edits }: { edits: FileEdit[] }) {
   const totalAdditions = edits.reduce((sum, e) => sum + e.additions, 0);
   const totalDeletions = edits.reduce((sum, e) => sum + e.deletions, 0);
 
@@ -79,10 +79,11 @@ function FileEditSummary({ edits }: { edits: FileEdit[] }) {
       </div>
     </div>
   );
-}
+});
 
-function MessageBubble({ message }: { message: Message }) {
+const MessageBubble = memo(function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
+  const paragraphs = useMemo(() => message.content.split("\n\n"), [message.content]);
 
   return (
     <div className={cn("max-w-none", isUser ? "flex justify-end" : "")}>
@@ -105,7 +106,7 @@ function MessageBubble({ message }: { message: Message }) {
           "text-sm leading-relaxed",
           isUser ? "text-foreground" : "text-foreground/90"
         )}>
-          {message.content.split("\n\n").map((paragraph, i) => {
+          {paragraphs.map((paragraph, i) => {
             // Check if it's a list
             if (paragraph.startsWith("- ") || paragraph.startsWith("* ")) {
               const items = paragraph.split("\n").filter(Boolean);
@@ -172,7 +173,7 @@ function MessageBubble({ message }: { message: Message }) {
       </div>
     </div>
   );
-}
+});
 
 export function ChatView() {
   const { state } = useAppStore();
@@ -187,7 +188,7 @@ export function ChatView() {
     if (viewport) {
       viewport.scrollTop = viewport.scrollHeight;
     }
-  }, [activeThread?.messages.length]);
+  }, [activeThread?.id, activeThread?.messages.length]);
 
   if (!activeThread) return null;
 

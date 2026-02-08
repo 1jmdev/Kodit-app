@@ -71,10 +71,10 @@ export function AppSidebar() {
 
   function handleSelectThread(threadId: string) {
     const thread = state.threads.find((item) => item.id === threadId);
-    if (thread) {
+    dispatch({ type: "SET_ACTIVE_THREAD", threadId });
+    if (thread && thread.projectId !== state.activeProjectId) {
       dispatch({ type: "SET_ACTIVE_PROJECT", projectId: thread.projectId });
     }
-    dispatch({ type: "SET_ACTIVE_THREAD", threadId });
     navigate(`/chat/${threadId}`);
   }
 

@@ -16,10 +16,10 @@ export function ChatPage() {
   const { state, dispatch } = useAppStore();
 
   useEffect(() => {
-    if (threadId && threadId !== state.activeThreadId) {
+    if (threadId) {
       dispatch({ type: "SET_ACTIVE_THREAD", threadId });
     }
-  }, [threadId, state.activeThreadId, dispatch]);
+  }, [threadId, dispatch]);
 
   const activeThread = state.threads.find((t) => t.id === state.activeThreadId);
   const hasDiffContent = activeThread && activeThread.fileChanges.length > 0;

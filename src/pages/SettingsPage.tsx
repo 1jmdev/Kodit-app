@@ -12,7 +12,6 @@ import {
   validateOpenRouterApiKey,
 } from "@/lib/openrouter";
 import { saveStoredSettings } from "@/lib/settings-storage";
-import { cn } from "@/lib/utils";
 
 export function SettingsPage() {
   const { state, dispatch } = useAppStore();
@@ -72,14 +71,6 @@ export function SettingsPage() {
     saveStoredSettings({
       openRouterApiKey: state.settings.openRouterApiKey,
       window: { ...state.settings.window, showWindowControls: show },
-    });
-  }
-
-  function handleWindowControlsPosition(position: "left" | "right") {
-    dispatch({ type: "SET_WINDOW_CONTROLS_POSITION", position });
-    saveStoredSettings({
-      openRouterApiKey: state.settings.openRouterApiKey,
-      window: { ...state.settings.window },
     });
   }
 
