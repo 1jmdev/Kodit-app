@@ -16,31 +16,31 @@ const plugins = [remarkGfm];
  * Returns the index to split at, or 0 if nothing is stable yet.
  */
 function findStableCut(content: string): number {
-  // We look for the last double-newline that is NOT inside a fenced code block.
-  // Walk the string keeping track of whether we're inside a fence.
-  let insideFence = false;
-  let lastCut = 0;
+    // We look for the last double-newline that is NOT inside a fenced code block.
+    // Walk the string keeping track of whether we're inside a fence.
+    let insideFence = false;
+    let lastCut = 0;
 
-  const lines = content.split("\n");
-  let offset = 0;
+    const lines = content.split("\n");
+    let offset = 0;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (/^```/.test(line.trimEnd())) {
-      insideFence = !insideFence;
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (/^```/.test(line.trimEnd())) {
+            insideFence = !insideFence;
+        }
+
+        // A blank line outside a code fence after some content marks a potential cut
+        if (!insideFence && line.trim() === "" && offset > 0) {
+            // Check if the NEXT line is also blank or if this is a block boundary
+            // A single blank line between paragraphs is a block boundary
+            lastCut = offset + line.length + 1; // +1 for the \n
+        }
+
+        offset += line.length + 1; // +1 for the \n
     }
 
-    // A blank line outside a code fence after some content marks a potential cut
-    if (!insideFence && line.trim() === "" && offset > 0) {
-      // Check if the NEXT line is also blank or if this is a block boundary
-      // A single blank line between paragraphs is a block boundary
-      lastCut = offset + line.length + 1; // +1 for the \n
-    }
-
-    offset += line.length + 1; // +1 for the \n
-  }
-
-  return lastCut;
+    return lastCut;
 }
 
 /**
@@ -48,14 +48,17 @@ function findStableCut(content: string): number {
  * Keyed by its content string so React can skip reconciliation entirely.
  */
 const StableMarkdown = memo(
-  function StableMarkdown({ content }: { content: string }) {
-    return (
-      <ReactMarkdown remarkPlugins={plugins} components={markdownComponents}>
-        {content}
-      </ReactMarkdown>
-    );
-  },
-  (prev, next) => prev.content === next.content
+    function StableMarkdown({ content }: { content: string }) {
+        return (
+            <ReactMarkdown
+                remarkPlugins={plugins}
+                components={markdownComponents}
+            >
+                {content}
+            </ReactMarkdown>
+        );
+    },
+    (prev, next) => prev.content === next.content,
 );
 
 /**
@@ -64,46 +67,49 @@ const StableMarkdown = memo(
  * it's only the small trailing chunk).
  */
 function ActiveMarkdown({ content }: { content: string }) {
-  return (
-    <ReactMarkdown remarkPlugins={plugins} components={markdownComponents}>
-      {content}
-    </ReactMarkdown>
-  );
+    return (
+        <ReactMarkdown remarkPlugins={plugins} components={markdownComponents}>
+            {content}
+        </ReactMarkdown>
+    );
 }
 
 export const MarkdownRenderer = memo(function MarkdownRenderer({
-  content,
-  isStreaming = false,
+    content,
+    isStreaming = false,
 }: {
-  content: string;
-  isStreaming?: boolean;
+    content: string;
+    isStreaming?: boolean;
 }) {
-  // Cache the stable prefix so it doesn't shift on every token
-  const stableRef = useRef<{ text: string; cut: number }>({ text: "", cut: 0 });
+    // Cache the stable prefix so it doesn't shift on every token
+    const stableRef = useRef<{ text: string; cut: number }>({
+        text: "",
+        cut: 0,
+    });
 
-  const { stableContent, activeContent } = useMemo(() => {
-    if (!isStreaming) {
-      // Message is complete — everything is stable, single pass
-      return { stableContent: content, activeContent: "" };
-    }
+    const { stableContent, activeContent } = useMemo(() => {
+        if (!isStreaming) {
+            // Message is complete — everything is stable, single pass
+            return { stableContent: content, activeContent: "" };
+        }
 
-    const cut = findStableCut(content);
+        const cut = findStableCut(content);
 
-    // Only grow the stable region — never shrink it (prevents flicker)
-    if (cut > stableRef.current.cut) {
-      stableRef.current = { text: content.slice(0, cut), cut };
-    }
+        // Only grow the stable region — never shrink it (prevents flicker)
+        if (cut > stableRef.current.cut) {
+            stableRef.current = { text: content.slice(0, cut), cut };
+        }
 
-    return {
-      stableContent: stableRef.current.text,
-      activeContent: content.slice(stableRef.current.cut),
-    };
-  }, [content, isStreaming]);
+        return {
+            stableContent: stableRef.current.text,
+            activeContent: content.slice(stableRef.current.cut),
+        };
+    }, [content, isStreaming]);
 
-  return (
-    <div className="leading-[1.6] break-words [&>*:first-child]:!mt-0 [&>*:last-child]:!mb-0">
-      {stableContent && <StableMarkdown content={stableContent} />}
-      {activeContent && <ActiveMarkdown content={activeContent} />}
-    </div>
-  );
+    return (
+        <div className="leading-[1.6] break-words [&>*:first-child]:!mt-0 [&>*:last-child]:!mb-0">
+            {stableContent && <StableMarkdown content={stableContent} />}
+            {activeContent && <ActiveMarkdown content={activeContent} />}
+        </div>
+    );
 });

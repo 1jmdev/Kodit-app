@@ -5,7 +5,7 @@ A simple desktop app boilerplate with Tauri v2, shadcn/ui, and Tailwind CSS.
 ## Tech Stack
 
 - **Tauri v2** - Desktop app framework
-- **React 19** - Frontend library  
+- **React 19** - Frontend library
 - **TypeScript** - Type safety
 - **shadcn/ui** - UI components
 - **Tailwind CSS** - Styling
@@ -14,6 +14,7 @@ A simple desktop app boilerplate with Tauri v2, shadcn/ui, and Tailwind CSS.
 ## Quick Start
 
 ### Prerequisites
+
 - [Bun](https://bun.sh/) or [Node.js](https://nodejs.org/) 18+
 - [Rust](https://rustup.rs/)
 

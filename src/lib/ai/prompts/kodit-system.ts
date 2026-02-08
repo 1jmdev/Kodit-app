@@ -1,8 +1,8 @@
 import type { PromptPreset } from "@/lib/ai/types";
 
 export const koditSystemPrompt: PromptPreset = {
-  id: "kodit.default",
-  text: `You are a coding agent running in the Kodit CLI, a terminal-based coding assistant. Kodit CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.
+    id: "kodit.default",
+    text: `You are a coding agent running in the Kodit CLI, a terminal-based coding assistant. Kodit CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.
 
 Your capabilities:
 

@@ -54,88 +54,88 @@ import "prismjs/components/prism-powershell";
 
 // ── Alias map ──
 const ALIASES: Record<string, string> = {
-  js: "javascript",
-  ts: "typescript",
-  py: "python",
-  rb: "ruby",
-  rs: "rust",
-  cs: "csharp",
-  "c++": "cpp",
-  "c#": "csharp",
-  sh: "bash",
-  shell: "bash",
-  zsh: "bash",
-  fish: "bash",
-  yml: "yaml",
-  dockerfile: "docker",
-  html: "markup",
-  xml: "markup",
-  svg: "markup",
-  tex: "latex",
-  objc: "c",
-  "objective-c": "c",
+    js: "javascript",
+    ts: "typescript",
+    py: "python",
+    rb: "ruby",
+    rs: "rust",
+    cs: "csharp",
+    "c++": "cpp",
+    "c#": "csharp",
+    sh: "bash",
+    shell: "bash",
+    zsh: "bash",
+    fish: "bash",
+    yml: "yaml",
+    dockerfile: "docker",
+    html: "markup",
+    xml: "markup",
+    svg: "markup",
+    tex: "latex",
+    objc: "c",
+    "objective-c": "c",
 };
 
 // ── Display labels ──
 const LABELS: Record<string, string> = {
-  javascript: "JavaScript",
-  typescript: "TypeScript",
-  jsx: "JSX",
-  tsx: "TSX",
-  python: "Python",
-  ruby: "Ruby",
-  rust: "Rust",
-  go: "Go",
-  java: "Java",
-  csharp: "C#",
-  cpp: "C++",
-  c: "C",
-  php: "PHP",
-  swift: "Swift",
-  kotlin: "Kotlin",
-  scala: "Scala",
-  bash: "Bash",
-  sql: "SQL",
-  graphql: "GraphQL",
-  json: "JSON",
-  yaml: "YAML",
-  toml: "TOML",
-  css: "CSS",
-  scss: "SCSS",
-  less: "Less",
-  markup: "HTML",
-  docker: "Dockerfile",
-  diff: "Diff",
-  git: "Git",
-  lua: "Lua",
-  perl: "Perl",
-  r: "R",
-  dart: "Dart",
-  elixir: "Elixir",
-  haskell: "Haskell",
-  clojure: "Clojure",
-  makefile: "Makefile",
-  nginx: "Nginx",
-  ini: "INI",
-  latex: "LaTeX",
-  powershell: "PowerShell",
-  markdown: "Markdown",
+    javascript: "JavaScript",
+    typescript: "TypeScript",
+    jsx: "JSX",
+    tsx: "TSX",
+    python: "Python",
+    ruby: "Ruby",
+    rust: "Rust",
+    go: "Go",
+    java: "Java",
+    csharp: "C#",
+    cpp: "C++",
+    c: "C",
+    php: "PHP",
+    swift: "Swift",
+    kotlin: "Kotlin",
+    scala: "Scala",
+    bash: "Bash",
+    sql: "SQL",
+    graphql: "GraphQL",
+    json: "JSON",
+    yaml: "YAML",
+    toml: "TOML",
+    css: "CSS",
+    scss: "SCSS",
+    less: "Less",
+    markup: "HTML",
+    docker: "Dockerfile",
+    diff: "Diff",
+    git: "Git",
+    lua: "Lua",
+    perl: "Perl",
+    r: "R",
+    dart: "Dart",
+    elixir: "Elixir",
+    haskell: "Haskell",
+    clojure: "Clojure",
+    makefile: "Makefile",
+    nginx: "Nginx",
+    ini: "INI",
+    latex: "LaTeX",
+    powershell: "PowerShell",
+    markdown: "Markdown",
 };
 
 /** Resolve a user-provided language string to a Prism grammar key. */
 export function resolveLanguage(lang: string): string {
-  const lower = lang.toLowerCase().trim();
-  return ALIASES[lower] ?? lower;
+    const lower = lang.toLowerCase().trim();
+    return ALIASES[lower] ?? lower;
 }
 
 /** Get a human-readable label for a resolved language key. */
 export function getLanguageLabel(lang: string): string {
-  return LABELS[lang] ?? lang.toUpperCase();
+    return LABELS[lang] ?? lang.toUpperCase();
 }
 
 /** Check whether Prism has a grammar loaded for the given key. */
 export function hasGrammar(lang: string): boolean {
-  return lang in Prism.languages;
+    return lang in Prism.languages;
 }
 
 export { Prism };

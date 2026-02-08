@@ -12,236 +12,282 @@ import { providerPresets } from "@/lib/ai/providers";
 import { fetchProviderModels, validateProviderApiKey } from "@/lib/ai";
 import { loadAuthApiKeys } from "@/lib/auth/auth-storage";
 import {
-  initializeStorage,
-  listProjects,
-  listThreads,
-  listMessages,
-  listDiffs,
+    initializeStorage,
+    listProjects,
+    listThreads,
+    listMessages,
+    listDiffs,
 } from "@/lib/tauri-storage";
 import { buildThreadDiffStats } from "@/lib/diff-utils";
 
 function App() {
-  const [state, dispatch] = useReducer(appReducer, initialState);
+    const [state, dispatch] = useReducer(appReducer, initialState);
 
-  useEffect(() => {
-    let cancelled = false;
+    useEffect(() => {
+        let cancelled = false;
 
-    async function bootstrapStorage() {
-      dispatch({ type: "SET_STORAGE_LOADING", loading: true });
-      dispatch({ type: "SET_STORAGE_ERROR", error: null });
+        async function bootstrapStorage() {
+            dispatch({ type: "SET_STORAGE_LOADING", loading: true });
+            dispatch({ type: "SET_STORAGE_ERROR", error: null });
 
-      try {
-        await initializeStorage();
-        const projects = await listProjects();
+            try {
+                await initializeStorage();
+                const projects = await listProjects();
 
-        if (cancelled) return;
+                if (cancelled) return;
 
-        dispatch({ type: "SET_PROJECTS", projects });
-        if (projects.length > 0) {
-          dispatch({ type: "SET_ACTIVE_PROJECT", projectId: projects[0].id });
+                dispatch({ type: "SET_PROJECTS", projects });
+                if (projects.length > 0) {
+                    dispatch({
+                        type: "SET_ACTIVE_PROJECT",
+                        projectId: projects[0].id,
+                    });
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    const message =
+                        error instanceof Error
+                            ? error.message
+                            : "Failed to initialize storage";
+                    dispatch({ type: "SET_STORAGE_ERROR", error: message });
+                }
+            } finally {
+                if (!cancelled) {
+                    dispatch({ type: "SET_STORAGE_LOADING", loading: false });
+                }
+            }
         }
-      } catch (error) {
-        if (!cancelled) {
-          const message = error instanceof Error ? error.message : "Failed to initialize storage";
-          dispatch({ type: "SET_STORAGE_ERROR", error: message });
+
+        void bootstrapStorage();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (state.projects.length === 0) {
+            dispatch({ type: "SET_THREADS", threads: [] });
+            return;
         }
-      } finally {
-        if (!cancelled) {
-          dispatch({ type: "SET_STORAGE_LOADING", loading: false });
+
+        let cancelled = false;
+
+        async function loadAllProjectThreads() {
+            try {
+                const projectThreadGroups = await Promise.all(
+                    state.projects.map(async (project) => {
+                        const threads = await listThreads(project.id);
+                        return Promise.all(
+                            threads.map(async (thread) => {
+                                const messages = await listMessages(thread.id);
+                                const diffs = await listDiffs(thread.id);
+                                const diffStats = buildThreadDiffStats(diffs);
+                                const latestTodos =
+                                    [...messages]
+                                        .reverse()
+                                        .find(
+                                            (message) =>
+                                                (message.todos?.length ?? 0) >
+                                                0,
+                                        )?.todos ?? [];
+                                return {
+                                    ...thread,
+                                    messages,
+                                    todos: latestTodos,
+                                    fileChanges: diffStats.fileChanges,
+                                    totalAdditions: diffStats.totalAdditions,
+                                    totalDeletions: diffStats.totalDeletions,
+                                    unstagedCount: diffStats.unstagedCount,
+                                    stagedCount: diffStats.stagedCount,
+                                    updatedAt:
+                                        messages.length > 0
+                                            ? messages[messages.length - 1]
+                                                  .timestamp
+                                            : thread.updatedAt,
+                                };
+                            }),
+                        );
+                    }),
+                );
+
+                const hydratedThreads = projectThreadGroups
+                    .flat()
+                    .sort((a, b) => b.updatedAt - a.updatedAt);
+
+                if (!cancelled) {
+                    dispatch({ type: "SET_THREADS", threads: hydratedThreads });
+                    if (
+                        state.activeThreadId &&
+                        !hydratedThreads.some(
+                            (thread) => thread.id === state.activeThreadId,
+                        )
+                    ) {
+                        dispatch({ type: "SET_ACTIVE_THREAD", threadId: null });
+                    }
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    const message =
+                        error instanceof Error
+                            ? error.message
+                            : "Failed to load threads";
+                    dispatch({ type: "SET_STORAGE_ERROR", error: message });
+                }
+            }
         }
-      }
-    }
 
-    void bootstrapStorage();
+        void loadAllProjectThreads();
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+        return () => {
+            cancelled = true;
+        };
+    }, [state.projects]);
 
-  useEffect(() => {
-    if (state.projects.length === 0) {
-      dispatch({ type: "SET_THREADS", threads: [] });
-      return;
-    }
+    useEffect(() => {
+        let cancelled = false;
 
-    let cancelled = false;
+        async function bootstrapSettings() {
+            const stored = loadStoredSettings();
+            const authKeys = await loadAuthApiKeys();
 
-    async function loadAllProjectThreads() {
-      try {
-        const projectThreadGroups = await Promise.all(
-          state.projects.map(async (project) => {
-            const threads = await listThreads(project.id);
-            return Promise.all(
-              threads.map(async (thread) => {
-                const messages = await listMessages(thread.id);
-                const diffs = await listDiffs(thread.id);
-                const diffStats = buildThreadDiffStats(diffs);
-                const latestTodos = [...messages]
-                  .reverse()
-                  .find((message) => (message.todos?.length ?? 0) > 0)?.todos ?? [];
-                return {
-                  ...thread,
-                  messages,
-                  todos: latestTodos,
-                  fileChanges: diffStats.fileChanges,
-                  totalAdditions: diffStats.totalAdditions,
-                  totalDeletions: diffStats.totalDeletions,
-                  unstagedCount: diffStats.unstagedCount,
-                  stagedCount: diffStats.stagedCount,
-                  updatedAt: messages.length > 0 ? messages[messages.length - 1].timestamp : thread.updatedAt,
-                };
-              }),
-            );
-          }),
-        );
-
-        const hydratedThreads = projectThreadGroups
-          .flat()
-          .sort((a, b) => b.updatedAt - a.updatedAt);
-
-        if (!cancelled) {
-          dispatch({ type: "SET_THREADS", threads: hydratedThreads });
-          if (
-            state.activeThreadId &&
-            !hydratedThreads.some((thread) => thread.id === state.activeThreadId)
-          ) {
-            dispatch({ type: "SET_ACTIVE_THREAD", threadId: null });
-          }
-        }
-      } catch (error) {
-        if (!cancelled) {
-          const message = error instanceof Error ? error.message : "Failed to load threads";
-          dispatch({ type: "SET_STORAGE_ERROR", error: message });
-        }
-      }
-    }
-
-    void loadAllProjectThreads();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [state.projects]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function bootstrapSettings() {
-      const stored = loadStoredSettings();
-      const authKeys = await loadAuthApiKeys();
-
-      if (cancelled) {
-        return;
-      }
-
-      const mergedKeys = {
-        ...stored.apiKeys,
-        ...authKeys,
-      };
-
-      for (const [providerId, apiKey] of Object.entries(mergedKeys)) {
-        if (apiKey.trim()) {
-          dispatch({ type: "SET_PROVIDER_API_KEY", providerId, apiKey: apiKey.trim() });
-        }
-      }
-
-      if (stored.window) {
-        dispatch({ type: "SET_WINDOW_SETTINGS", settings: stored.window });
-      }
-
-      dispatch({
-        type: "SET_MODEL_PROFILES",
-        profiles: stored.modelProfiles,
-        selectedModelId: stored.selectedModelId,
-      });
-    }
-
-    void bootstrapSettings();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadModels() {
-      dispatch({ type: "SET_MODELS_LOADING", loading: true });
-      dispatch({ type: "SET_MODELS_ERROR", error: null });
-
-      try {
-        const modelGroups = await Promise.all(
-          providerPresets.map(async (preset) => {
-            const apiKey = state.settings.apiKeys[preset.id] ?? "";
-            const validation = validateProviderApiKey(preset.id, apiKey);
-            if (!validation.success) {
-              return [];
+            if (cancelled) {
+                return;
             }
 
-            return fetchProviderModels(preset.id, apiKey);
-          }),
-        );
+            const mergedKeys = {
+                ...stored.apiKeys,
+                ...authKeys,
+            };
 
-        const models = modelGroups.flat();
-        if (!cancelled) {
-          dispatch({ type: "SET_AVAILABLE_MODELS", models });
+            for (const [providerId, apiKey] of Object.entries(mergedKeys)) {
+                if (apiKey.trim()) {
+                    dispatch({
+                        type: "SET_PROVIDER_API_KEY",
+                        providerId,
+                        apiKey: apiKey.trim(),
+                    });
+                }
+            }
+
+            if (stored.window) {
+                dispatch({
+                    type: "SET_WINDOW_SETTINGS",
+                    settings: stored.window,
+                });
+            }
+
+            dispatch({
+                type: "SET_MODEL_PROFILES",
+                profiles: stored.modelProfiles,
+                selectedModelId: stored.selectedModelId,
+            });
         }
-      } catch (error) {
-        if (!cancelled) {
-          const message = error instanceof Error ? error.message : "Failed to load models";
-          dispatch({ type: "SET_MODELS_ERROR", error: message });
+
+        void bootstrapSettings();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadModels() {
+            dispatch({ type: "SET_MODELS_LOADING", loading: true });
+            dispatch({ type: "SET_MODELS_ERROR", error: null });
+
+            try {
+                const modelGroups = await Promise.all(
+                    providerPresets.map(async (preset) => {
+                        const apiKey = state.settings.apiKeys[preset.id] ?? "";
+                        const validation = validateProviderApiKey(
+                            preset.id,
+                            apiKey,
+                        );
+                        if (!validation.success) {
+                            return [];
+                        }
+
+                        return fetchProviderModels(preset.id, apiKey);
+                    }),
+                );
+
+                const models = modelGroups.flat();
+                if (!cancelled) {
+                    dispatch({ type: "SET_AVAILABLE_MODELS", models });
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    const message =
+                        error instanceof Error
+                            ? error.message
+                            : "Failed to load models";
+                    dispatch({ type: "SET_MODELS_ERROR", error: message });
+                }
+            } finally {
+                if (!cancelled) {
+                    dispatch({ type: "SET_MODELS_LOADING", loading: false });
+                }
+            }
         }
-      } finally {
-        if (!cancelled) {
-          dispatch({ type: "SET_MODELS_LOADING", loading: false });
-        }
-      }
-    }
 
-    void loadModels();
+        void loadModels();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [state.settings.apiKeys]);
+        return () => {
+            cancelled = true;
+        };
+    }, [state.settings.apiKeys]);
 
-  return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-      <AppContext.Provider value={{ state, dispatch }}>
-        <BrowserRouter>
-          <div className="flex h-screen w-screen flex-col overflow-hidden bg-sidebar">
-            <div className="flex flex-1 overflow-hidden">
-              {/* Sidebar */}
-              <AppSidebar />
-              
-              {/* Main content area with custom title bar shape */}
-              <div className="flex flex-1 flex-col overflow-hidden">
-                {/* Custom shaped title bar - thin bar flowing to wider controls area */}
-                <TitleBar />
-                
-                {/* Content */}
-                <main className="flex flex-1 flex-col overflow-hidden rounded-tl-2xl bg-background">
-                  {state.storageLoading ? (
-                    <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-                      Loading workspace...
+    return (
+        <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem={false}
+        >
+            <AppContext.Provider value={{ state, dispatch }}>
+                <BrowserRouter>
+                    <div className="flex h-screen w-screen flex-col overflow-hidden bg-sidebar">
+                        <div className="flex flex-1 overflow-hidden">
+                            {/* Sidebar */}
+                            <AppSidebar />
+
+                            {/* Main content area with custom title bar shape */}
+                            <div className="flex flex-1 flex-col overflow-hidden">
+                                {/* Custom shaped title bar - thin bar flowing to wider controls area */}
+                                <TitleBar />
+
+                                {/* Content */}
+                                <main className="flex flex-1 flex-col overflow-hidden rounded-tl-2xl bg-background">
+                                    {state.storageLoading ? (
+                                        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+                                            Loading workspace...
+                                        </div>
+                                    ) : (
+                                        <Routes>
+                                            <Route
+                                                path="/"
+                                                element={<HomePage />}
+                                            />
+                                            <Route
+                                                path="/chat/:threadId"
+                                                element={<ChatPage />}
+                                            />
+                                            <Route
+                                                path="/settings"
+                                                element={<SettingsPage />}
+                                            />
+                                        </Routes>
+                                    )}
+                                </main>
+                            </div>
+                        </div>
                     </div>
-                  ) : (
-                    <Routes>
-                      <Route path="/" element={<HomePage />} />
-                      <Route path="/chat/:threadId" element={<ChatPage />} />
-                      <Route path="/settings" element={<SettingsPage />} />
-                    </Routes>
-                  )}
-                </main>
-              </div>
-            </div>
-          </div>
-        </BrowserRouter>
-      </AppContext.Provider>
-    </ThemeProvider>
-  );
+                </BrowserRouter>
+            </AppContext.Provider>
+        </ThemeProvider>
+    );
 }
 
 export default App;

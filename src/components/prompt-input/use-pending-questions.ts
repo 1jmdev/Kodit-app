@@ -1,23 +1,26 @@
 import { useSyncExternalStore } from "react";
 
 import {
-  answerQuestions,
-  getPendingQuestions,
-  subscribePendingQuestions,
+    answerQuestions,
+    getPendingQuestions,
+    subscribePendingQuestions,
 } from "@/lib/ai/question-bridge";
 import type { QuestionAnswer } from "@/lib/ai/question-bridge";
 
 export function usePendingQuestions() {
-  const pendingQuestions = useSyncExternalStore(subscribePendingQuestions, getPendingQuestions);
-  const isWaitingForAnswer = pendingQuestions !== null;
+    const pendingQuestions = useSyncExternalStore(
+        subscribePendingQuestions,
+        getPendingQuestions,
+    );
+    const isWaitingForAnswer = pendingQuestions !== null;
 
-  function submitAnswers(answers: QuestionAnswer[]) {
-    answerQuestions(answers);
-  }
+    function submitAnswers(answers: QuestionAnswer[]) {
+        answerQuestions(answers);
+    }
 
-  return {
-    pendingQuestions,
-    isWaitingForAnswer,
-    submitAnswers,
-  };
+    return {
+        pendingQuestions,
+        isWaitingForAnswer,
+        submitAnswers,
+    };
 }
