@@ -176,25 +176,30 @@ function MessageBubble({ message }: { message: Message }) {
 
 export function ChatView() {
   const { state } = useAppStore();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const activeThread = state.threads.find((t) => t.id === state.activeThreadId);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const viewport = containerRef.current?.querySelector(
+      '[data-slot="scroll-area-viewport"]'
+    ) as HTMLElement | null;
+    if (viewport) {
+      viewport.scrollTop = viewport.scrollHeight;
     }
   }, [activeThread?.messages.length]);
 
   if (!activeThread) return null;
 
   return (
-    <ScrollArea className="flex-1">
-      <div className="mx-auto max-w-3xl px-6 py-6 space-y-6" ref={scrollRef}>
-        {activeThread.messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
-        ))}
-      </div>
-    </ScrollArea>
+    <div ref={containerRef} className="flex-1 overflow-hidden min-h-0">
+      <ScrollArea className="h-full">
+        <div className="mx-auto max-w-3xl px-6 py-6 space-y-6">
+          {activeThread.messages.map((message) => (
+            <MessageBubble key={message.id} message={message} />
+          ))}
+        </div>
+      </ScrollArea>
+    </div>
   );
 }
