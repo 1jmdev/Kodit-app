@@ -22,6 +22,12 @@ export function HomePage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(state.activeProjectId);
 
   useEffect(() => {
+    if (state.activeThreadId !== null) {
+      dispatch({ type: "SET_ACTIVE_THREAD", threadId: null });
+    }
+  }, [state.activeThreadId, dispatch]);
+
+  useEffect(() => {
     if (pendingProject) return;
     setSelectedProjectId(state.activeProjectId);
   }, [pendingProject, state.activeProjectId]);

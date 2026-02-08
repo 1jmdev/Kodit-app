@@ -1,5 +1,5 @@
 import { useAppStore } from "@/store/app-store";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,7 +21,10 @@ import {
 export function TopBar() {
   const { state } = useAppStore();
   const navigate = useNavigate();
-  const activeThread = state.threads.find((t) => t.id === state.activeThreadId);
+  const { threadId } = useParams<{ threadId: string }>();
+  const activeThread =
+    (threadId ? state.threads.find((t) => t.id === threadId) : undefined) ??
+    (state.activeThreadId ? state.threads.find((t) => t.id === state.activeThreadId) : undefined);
   const activeProject = state.projects.find((project) => project.id === activeThread?.projectId);
 
   if (!activeThread) return null;

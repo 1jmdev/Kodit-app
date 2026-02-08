@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAppStore } from "@/store/app-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -65,7 +65,6 @@ export function AppSidebar() {
   }, [state.projects]);
 
   function handleNewThread() {
-    dispatch({ type: "SET_ACTIVE_THREAD", threadId: null });
     navigate("/");
   }
 
@@ -80,6 +79,18 @@ export function AppSidebar() {
 
   function handleOpenSettings() {
     navigate("/settings");
+  }
+
+  function handlePrimaryMouseDown(event: MouseEvent<HTMLButtonElement>, action: () => void) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    action();
+  }
+
+  function handleKeyboardClick(event: MouseEvent<HTMLButtonElement>, action: () => void) {
+    if (event.detail === 0) {
+      action();
+    }
   }
 
   const navItems = [
@@ -100,7 +111,8 @@ export function AppSidebar() {
         {navItems.map((item) => (
           <button
             key={item.id}
-            onClick={item.action}
+            onMouseDown={item.action ? (event) => handlePrimaryMouseDown(event, item.action) : undefined}
+            onClick={item.action ? (event) => handleKeyboardClick(event, item.action) : undefined}
             className={cn(
               "flex items-center gap-2 rounded-md px-2.5 py-[7px] text-[13px] transition-colors",
               item.id === "new"
@@ -147,11 +159,18 @@ export function AppSidebar() {
                     )}
                   </button>
                   <button
-                    onClick={() => {
-                      dispatch({ type: "SET_ACTIVE_PROJECT", projectId: project.id });
-                      dispatch({ type: "SET_ACTIVE_THREAD", threadId: null });
-                      navigate("/");
-                    }}
+                    onMouseDown={(event) =>
+                      handlePrimaryMouseDown(event, () => {
+                        dispatch({ type: "SET_ACTIVE_PROJECT", projectId: project.id });
+                        navigate("/");
+                      })
+                    }
+                    onClick={(event) =>
+                      handleKeyboardClick(event, () => {
+                        dispatch({ type: "SET_ACTIVE_PROJECT", projectId: project.id });
+                        navigate("/");
+                      })
+                    }
                     className="flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-2 text-left"
                   >
                     <Folder className="size-3.5 text-muted-foreground/70 shrink-0" />
@@ -168,7 +187,12 @@ export function AppSidebar() {
                       return (
                         <button
                           key={thread.id}
-                          onClick={() => handleSelectThread(thread.id)}
+                          onMouseDown={(event) =>
+                            handlePrimaryMouseDown(event, () => handleSelectThread(thread.id))
+                          }
+                          onClick={(event) =>
+                            handleKeyboardClick(event, () => handleSelectThread(thread.id))
+                          }
                           className={cn(
                             "group flex w-full items-start gap-2 rounded-md px-2 py-[6px] text-left transition-all",
                             isActive
@@ -235,7 +259,8 @@ export function AppSidebar() {
       <div className="mx-3 my-1 h-px bg-border/40" />
       <div className="px-2 pb-3 pt-1">
         <button
-          onClick={handleOpenSettings}
+          onMouseDown={(event) => handlePrimaryMouseDown(event, handleOpenSettings)}
+          onClick={(event) => handleKeyboardClick(event, handleOpenSettings)}
           className="flex w-full items-center gap-2 rounded-lg border border-border/50 bg-card/40 px-2.5 py-2 text-[13px] text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
         >
           <Settings className="size-3.5" />

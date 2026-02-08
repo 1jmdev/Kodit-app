@@ -21,7 +21,9 @@ export function ChatPage() {
     }
   }, [threadId, dispatch]);
 
-  const activeThread = state.threads.find((t) => t.id === state.activeThreadId);
+  const activeThread =
+    (threadId ? state.threads.find((t) => t.id === threadId) : undefined) ??
+    (state.activeThreadId ? state.threads.find((t) => t.id === state.activeThreadId) : undefined);
   const hasDiffContent = activeThread && activeThread.fileChanges.length > 0;
   const showDiff = state.diffPanelOpen && hasDiffContent;
 

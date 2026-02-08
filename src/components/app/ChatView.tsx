@@ -1,4 +1,5 @@
-import { memo, useRef, useEffect, useMemo } from "react";
+import { memo, useRef, useEffect, useLayoutEffect, useMemo } from "react";
+import { useParams } from "react-router-dom";
 import { useAppStore } from "@/store/app-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -177,9 +178,21 @@ const MessageBubble = memo(function MessageBubble({ message }: { message: Messag
 
 export function ChatView() {
   const { state } = useAppStore();
+  const { threadId } = useParams<{ threadId: string }>();
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const activeThread = state.threads.find((t) => t.id === state.activeThreadId);
+  const activeThread =
+    (threadId ? state.threads.find((t) => t.id === threadId) : undefined) ??
+    (state.activeThreadId ? state.threads.find((t) => t.id === state.activeThreadId) : undefined);
+
+  useLayoutEffect(() => {
+    const viewport = containerRef.current?.querySelector(
+      '[data-slot="scroll-area-viewport"]'
+    ) as HTMLElement | null;
+    if (viewport) {
+      viewport.scrollTop = viewport.scrollHeight;
+    }
+  }, [activeThread?.id]);
 
   useEffect(() => {
     const viewport = containerRef.current?.querySelector(
@@ -188,9 +201,11 @@ export function ChatView() {
     if (viewport) {
       viewport.scrollTop = viewport.scrollHeight;
     }
-  }, [activeThread?.id, activeThread?.messages.length]);
+  }, [activeThread?.messages.length]);
 
-  if (!activeThread) return null;
+  if (!activeThread) {
+    return <div className="flex-1 min-h-0" />;
+  }
 
   return (
     <div ref={containerRef} className="flex-1 overflow-hidden min-h-0">
