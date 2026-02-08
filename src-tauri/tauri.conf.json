@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Kodit",
         "resizable": true,
         "decorations": false,
