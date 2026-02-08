@@ -8,7 +8,7 @@ import { HomePage } from "@/pages/HomePage";
 import { ChatPage } from "@/pages/ChatPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { loadStoredSettings } from "@/lib/settings-storage";
-import { DEFAULT_PROVIDER_ID } from "@/lib/ai/providers";
+import { providerPresets } from "@/lib/ai/providers";
 import { fetchProviderModels, validateProviderApiKey } from "@/lib/ai";
 import { loadAuthApiKeys } from "@/lib/auth/auth-storage";
 import {
@@ -152,12 +152,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const activeProviderApiKey = state.settings.apiKeys[DEFAULT_PROVIDER_ID] ?? "";
-    const validation = validateProviderApiKey(DEFAULT_PROVIDER_ID, activeProviderApiKey);
-    if (!validation.success) {
-      return;
-    }
-
     let cancelled = false;
 
     async function loadModels() {
@@ -165,7 +159,19 @@ function App() {
       dispatch({ type: "SET_MODELS_ERROR", error: null });
 
       try {
-        const models = await fetchProviderModels(DEFAULT_PROVIDER_ID, activeProviderApiKey);
+        const modelGroups = await Promise.all(
+          providerPresets.map(async (preset) => {
+            const apiKey = state.settings.apiKeys[preset.id] ?? "";
+            const validation = validateProviderApiKey(preset.id, apiKey);
+            if (!validation.success) {
+              return [];
+            }
+
+            return fetchProviderModels(preset.id, apiKey);
+          }),
+        );
+
+        const models = modelGroups.flat();
         if (!cancelled) {
           dispatch({ type: "SET_AVAILABLE_MODELS", models });
         }

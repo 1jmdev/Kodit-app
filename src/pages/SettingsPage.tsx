@@ -8,20 +8,23 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { DEFAULT_PROVIDER_ID, getProviderPreset, providerPresets } from "@/lib/ai/providers";
+import { getProviderPreset, providerPresets } from "@/lib/ai/providers";
 import { fetchProviderModels, validateProviderApiKey } from "@/lib/ai";
 import { saveStoredSettings } from "@/lib/settings-storage";
 import { saveAuthApiKey } from "@/lib/auth/auth-storage";
 
 export function SettingsPage() {
   const { state, dispatch } = useAppStore();
-  const [localError, setLocalError] = useState<string | null>(null);
+  const [refreshingByProvider, setRefreshingByProvider] = useState<Record<string, boolean>>({});
+  const [providerErrorById, setProviderErrorById] = useState<Record<string, string | null>>({});
   const [modelSearch, setModelSearch] = useState("");
   const [apiKeyInputByProvider, setApiKeyInputByProvider] = useState<Record<string, string>>(
     state.settings.apiKeys,
   );
 
-  const activeProvider = useMemo(() => getProviderPreset(DEFAULT_PROVIDER_ID), []);
+  function getModelKey(model: ModelConfig): string {
+    return `${model.providerId}:${model.id}`;
+  }
 
   function fuzzyScore(needle: string, haystack: string): number {
     if (!needle) {
@@ -102,18 +105,18 @@ export function SettingsPage() {
   }
 
   async function refreshModels(providerId: string, apiKey: string) {
-    dispatch({ type: "SET_MODELS_LOADING", loading: true });
-    dispatch({ type: "SET_MODELS_ERROR", error: null });
+    setRefreshingByProvider((prev) => ({ ...prev, [providerId]: true }));
+    setProviderErrorById((prev) => ({ ...prev, [providerId]: null }));
 
     try {
       const models = await fetchProviderModels(providerId, apiKey);
-      dispatch({ type: "SET_AVAILABLE_MODELS", models });
-      dispatch({ type: "SET_MODELS_ERROR", error: null });
+      const remainingModels = state.availableModels.filter((model) => model.providerId !== providerId);
+      dispatch({ type: "SET_AVAILABLE_MODELS", models: [...remainingModels, ...models] });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load models";
-      dispatch({ type: "SET_MODELS_ERROR", error: message });
+      setProviderErrorById((prev) => ({ ...prev, [providerId]: message }));
     } finally {
-      dispatch({ type: "SET_MODELS_LOADING", loading: false });
+      setRefreshingByProvider((prev) => ({ ...prev, [providerId]: false }));
     }
   }
 
@@ -123,7 +126,7 @@ export function SettingsPage() {
     const validation = validateProviderApiKey(providerId, apiKey);
 
     if (!validation.success) {
-      setLocalError(validation.message || preset.apiKeyHint);
+      setProviderErrorById((prev) => ({ ...prev, [providerId]: validation.message || preset.apiKeyHint }));
       return;
     }
 
@@ -143,23 +146,23 @@ export function SettingsPage() {
       [providerId]: apiKey,
     }));
 
-    setLocalError(null);
-    if (providerId === DEFAULT_PROVIDER_ID) {
-      await refreshModels(providerId, apiKey);
-    }
+    setProviderErrorById((prev) => ({ ...prev, [providerId]: null }));
+    await refreshModels(providerId, apiKey);
   }
 
-  async function handleRefreshModels() {
-    const providerId = DEFAULT_PROVIDER_ID;
+  async function handleRefreshModels(providerId: string) {
     const apiKey = state.settings.apiKeys[providerId] ?? "";
     const validation = validateProviderApiKey(providerId, apiKey);
 
     if (!validation.success) {
-      setLocalError(validation.message || getProviderPreset(providerId).apiKeyHint);
+      setProviderErrorById((prev) => ({
+        ...prev,
+        [providerId]: validation.message || getProviderPreset(providerId).apiKeyHint,
+      }));
       return;
     }
 
-    setLocalError(null);
+    setProviderErrorById((prev) => ({ ...prev, [providerId]: null }));
     await refreshModels(providerId, apiKey);
   }
 
@@ -169,12 +172,12 @@ export function SettingsPage() {
   }
 
   function handleAddModelProfile(model: ModelConfig) {
-    if (state.settings.modelProfiles.some((profile) => profile.id === model.id)) {
+    if (state.settings.modelProfiles.some((profile) => getModelKey(profile) === getModelKey(model))) {
       return;
     }
 
     const nextProfiles = [...state.settings.modelProfiles, model];
-    const nextSelectedModelId = state.settings.selectedModelId || model.id;
+    const nextSelectedModelId = state.settings.selectedModelId || getModelKey(model);
 
     dispatch({
       type: "SET_MODEL_PROFILES",
@@ -184,15 +187,15 @@ export function SettingsPage() {
     persistSettings({ modelProfiles: nextProfiles, selectedModelId: nextSelectedModelId });
   }
 
-  function handleRemoveModelProfile(modelId: string) {
+  function handleRemoveModelProfile(modelKey: string) {
     if (state.settings.modelProfiles.length <= 1) {
       return;
     }
 
-    const nextProfiles = state.settings.modelProfiles.filter((profile) => profile.id !== modelId);
+    const nextProfiles = state.settings.modelProfiles.filter((profile) => getModelKey(profile) !== modelKey);
     const nextSelectedModelId =
-      state.settings.selectedModelId === modelId
-        ? (nextProfiles[0]?.id ?? state.selectedModel.id)
+      state.settings.selectedModelId === modelKey
+        ? getModelKey(nextProfiles[0] ?? state.selectedModel)
         : state.settings.selectedModelId;
 
     dispatch({
@@ -205,7 +208,7 @@ export function SettingsPage() {
 
   function handleSelectModelProfile(model: ModelConfig) {
     dispatch({ type: "SET_MODEL", model });
-    persistSettings({ selectedModelId: model.id });
+    persistSettings({ selectedModelId: getModelKey(model) });
   }
 
   return (
@@ -241,7 +244,10 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
-        {providerPresets.map((preset) => (
+        {providerPresets.map((preset) => {
+          const providerModels = state.availableModels.filter((model) => model.providerId === preset.id);
+
+          return (
           <Card key={preset.id}>
             <CardHeader>
               <CardTitle>{preset.label}</CardTitle>
@@ -262,7 +268,15 @@ export function SettingsPage() {
                         [preset.id]: event.target.value,
                       }))
                     }
-                    placeholder={preset.id === "openrouter" ? "sk-or-v1-..." : "Enter API key"}
+                    placeholder={
+                      preset.id === "openrouter"
+                        ? "sk-or-v1-..."
+                        : preset.id === "openai"
+                          ? "sk-..."
+                          : preset.id === "gemini"
+                            ? "AIza..."
+                            : "Enter API key"
+                    }
                     autoComplete="off"
                     spellCheck={false}
                     type="password"
@@ -270,33 +284,45 @@ export function SettingsPage() {
                   <Button
                     className="sm:shrink-0"
                     onClick={() => void handleSaveApiKey(preset.id)}
-                    disabled={state.modelsLoading}
+                    disabled={refreshingByProvider[preset.id]}
                   >
                     Save key
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">{preset.apiKeyHint}</p>
-                {(localError || state.modelsError) && (
-                  <p className="text-xs text-destructive">{localError || state.modelsError}</p>
+                {providerErrorById[preset.id] && (
+                  <p className="text-xs text-destructive">{providerErrorById[preset.id]}</p>
                 )}
               </div>
 
-              {preset.id === activeProvider.id && (
+              <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variant="outline"
-                    onClick={() => void handleRefreshModels()}
-                    disabled={state.modelsLoading}
+                    onClick={() => void handleRefreshModels(preset.id)}
+                    disabled={refreshingByProvider[preset.id]}
                   >
-                    {state.modelsLoading ? "Refreshing models..." : "Refresh models"}
+                    {refreshingByProvider[preset.id] ? "Refreshing models..." : `Refresh ${preset.label} models`}
                   </Button>
-                  <Badge variant="outline">{state.availableModels.length} synced models</Badge>
-                  <Badge variant="outline">{state.settings.modelProfiles.length} profiles</Badge>
+                  <Badge variant="outline">{providerModels.length} synced models</Badge>
                 </div>
-              )}
+
+                <div className="max-h-36 overflow-y-auto rounded-md border border-border/60 bg-muted/20 p-2">
+                  {providerModels.length === 0 ? (
+                    <p className="px-2 py-1 text-xs text-muted-foreground">No synced models for this provider yet.</p>
+                  ) : (
+                    providerModels.slice(0, 30).map((model) => (
+                      <div key={getModelKey(model)} className="truncate px-2 py-1 text-xs text-muted-foreground">
+                        {model.id}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
-        ))}
+          );
+        })}
 
         <Card>
           <CardHeader>
@@ -326,10 +352,12 @@ export function SettingsPage() {
                 )}
 
                 {filteredModels.map((model) => {
-                  const exists = state.settings.modelProfiles.some((profile) => profile.id === model.id);
+                  const exists = state.settings.modelProfiles.some(
+                    (profile) => getModelKey(profile) === getModelKey(model),
+                  );
                   return (
                     <div
-                      key={model.id}
+                      key={getModelKey(model)}
                       className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-background/40"
                     >
                       <div className="min-w-0">
@@ -354,10 +382,11 @@ export function SettingsPage() {
               <Label>Configured profiles</Label>
               <div className="space-y-2">
                 {state.settings.modelProfiles.map((profile) => {
-                  const isSelected = state.settings.selectedModelId === profile.id;
+                  const profileKey = getModelKey(profile);
+                  const isSelected = state.settings.selectedModelId === profileKey;
                   return (
                     <div
-                      key={profile.id}
+                      key={profileKey}
                       className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/10 px-3 py-2"
                     >
                       <div className="min-w-0">
@@ -375,7 +404,7 @@ export function SettingsPage() {
                         <Button
                           size="icon-sm"
                           variant="ghost"
-                          onClick={() => handleRemoveModelProfile(profile.id)}
+                          onClick={() => handleRemoveModelProfile(profileKey)}
                           disabled={state.settings.modelProfiles.length <= 1}
                         >
                           <X className="size-3.5" />

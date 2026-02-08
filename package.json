@@ -10,6 +10,8 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.22",
+    "@ai-sdk/openai": "^3.0.26",
     "@base-ui/react": "^1.1.0",
     "@openrouter/ai-sdk-provider": "^2.1.1",
     "@tailwindcss/vite": "^4.1.18",

@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { defaultModel } from "@/store/mock-data";
+import type { ModelConfig } from "@/store/types";
 
 const STORAGE_KEY = "kodit.settings";
+
+function getModelKey(model: ModelConfig): string {
+  return `${model.providerId}:${model.id}`;
+}
 
 const windowSettingsSchema = z.object({
   showWindowControls: z.boolean().default(true),
@@ -22,7 +27,7 @@ const settingsSchema = z.object({
       }),
     )
     .default([defaultModel]),
-  selectedModelId: z.string().default(defaultModel.id),
+  selectedModelId: z.string().default(getModelKey(defaultModel)),
 });
 
 export type StoredSettings = z.infer<typeof settingsSchema>;
@@ -35,7 +40,7 @@ const defaultSettings: StoredSettings = {
   apiKeys: {},
   window: defaultWindowSettings,
   modelProfiles: [defaultModel],
-  selectedModelId: defaultModel.id,
+  selectedModelId: getModelKey(defaultModel),
 };
 
 export function loadStoredSettings(): StoredSettings {
@@ -77,19 +82,28 @@ export function loadStoredSettings(): StoredSettings {
         : {},
       window: legacy.data.window ?? defaultWindowSettings,
       modelProfiles: legacy.data.modelProfiles ?? [defaultModel],
-      selectedModelId: legacy.data.selectedModelId ?? legacy.data.modelProfiles?.[0]?.id ?? defaultModel.id,
+      selectedModelId:
+        legacy.data.selectedModelId ??
+        getModelKey(legacy.data.modelProfiles?.[0] ?? defaultModel),
     };
   }
 
   if (parsed.data.modelProfiles.length === 0) {
-    return { ...parsed.data, modelProfiles: [defaultModel], selectedModelId: defaultModel.id };
+    return { ...parsed.data, modelProfiles: [defaultModel], selectedModelId: getModelKey(defaultModel) };
   }
 
-  if (!parsed.data.modelProfiles.some((model) => model.id === parsed.data.selectedModelId)) {
-    return { ...parsed.data, selectedModelId: parsed.data.modelProfiles[0].id };
+  const normalizedSelectedModelId = parsed.data.selectedModelId.includes(":")
+    ? parsed.data.selectedModelId
+    : getModelKey(
+        parsed.data.modelProfiles.find((model) => model.id === parsed.data.selectedModelId) ??
+          parsed.data.modelProfiles[0],
+      );
+
+  if (!parsed.data.modelProfiles.some((model) => getModelKey(model) === normalizedSelectedModelId)) {
+    return { ...parsed.data, selectedModelId: getModelKey(parsed.data.modelProfiles[0]) };
   }
 
-  return parsed.data;
+  return { ...parsed.data, selectedModelId: normalizedSelectedModelId };
 }
 
 export function saveStoredSettings(settings: StoredSettings) {

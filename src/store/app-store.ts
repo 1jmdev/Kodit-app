@@ -2,6 +2,10 @@ import { createContext, useContext } from "react";
 import type { AppState, Thread, Message, ModelConfig, WindowSettings } from "./types";
 import { mockModels, defaultModel } from "./mock-data";
 
+function getModelKey(model: ModelConfig): string {
+  return `${model.providerId}:${model.id}`;
+}
+
 export const initialState: AppState = {
   threads: [],
   activeThreadId: null,
@@ -15,7 +19,7 @@ export const initialState: AppState = {
       showWindowControls: true,
     },
     modelProfiles: [defaultModel],
-    selectedModelId: defaultModel.id,
+    selectedModelId: getModelKey(defaultModel),
   },
   modelsLoading: false,
   modelsError: null,
@@ -175,10 +179,6 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         })(),
       };
     case "SET_AVAILABLE_MODELS": {
-      if (action.models.length === 0) {
-        return state;
-      }
-
       return {
         ...state,
         availableModels: action.models,
@@ -197,11 +197,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       };
     case "SET_MODEL_PROFILES": {
       const dedupedProfiles = action.profiles.filter(
-        (model, index, models) => models.findIndex((candidate) => candidate.id === model.id) === index,
+        (model, index, models) =>
+          models.findIndex((candidate) => getModelKey(candidate) === getModelKey(model)) === index,
       );
       const nextSelectedModelId = action.selectedModelId ?? state.settings.selectedModelId;
       const selectedModel =
-        dedupedProfiles.find((model) => model.id === nextSelectedModelId) ??
+        dedupedProfiles.find((model) => getModelKey(model) === nextSelectedModelId) ??
         dedupedProfiles[0] ??
         state.selectedModel;
 
@@ -211,7 +212,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         settings: {
           ...state.settings,
           modelProfiles: dedupedProfiles,
-          selectedModelId: selectedModel.id,
+          selectedModelId: getModelKey(selectedModel),
         },
       };
     }
@@ -225,7 +226,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         selectedModel: action.model,
         settings: {
           ...state.settings,
-          selectedModelId: action.model.id,
+          selectedModelId: getModelKey(action.model),
         },
       };
     case "TOGGLE_SIDEBAR":
