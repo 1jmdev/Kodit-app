@@ -1,5 +1,6 @@
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -17,6 +18,7 @@ const MESSAGES_DIR: &str = "messages";
 const DIFFS_DIR: &str = "diffs";
 const MANIFEST_FILE: &str = "manifest.json";
 const SCHEMA_VERSION: u32 = 1;
+const AUTH_CONFIG_REL_PATH: &str = ".config/com.1jmdev.kodit/auth.json";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -160,6 +162,11 @@ pub struct StorageInfo {
     pub schema_version: u32,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AuthConfig {
+    pub api_keys: HashMap<String, String>,
+}
+
 fn now_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -171,6 +178,14 @@ fn storage_root(app: &AppHandle) -> Result<PathBuf, String> {
     let mut root = app.path().app_data_dir().map_err(|e| e.to_string())?;
     root.push(STORAGE_DIR);
     Ok(root)
+}
+
+fn auth_config_path(app: &AppHandle) -> Result<PathBuf, String> {
+    let home_dir = app
+        .path()
+        .home_dir()
+        .map_err(|e| e.to_string())?;
+    Ok(home_dir.join(AUTH_CONFIG_REL_PATH))
 }
 
 fn project_file(root: &Path, id: &str) -> PathBuf {
@@ -476,6 +491,26 @@ fn list_diffs(app: AppHandle, thread_id: String) -> Result<Vec<DiffRecord>, Stri
 }
 
 #[tauri::command]
+fn read_auth_config(app: AppHandle) -> Result<AuthConfig, String> {
+    let path = auth_config_path(&app)?;
+    if !path.exists() {
+        return Ok(AuthConfig::default());
+    }
+
+    match read_json_file::<AuthConfig>(&path) {
+        Ok(config) => Ok(config),
+        Err(_) => Ok(AuthConfig::default()),
+    }
+}
+
+#[tauri::command]
+fn write_auth_config(app: AppHandle, input: AuthConfig) -> Result<AuthConfig, String> {
+    let path = auth_config_path(&app)?;
+    write_json_file(&path, &input)?;
+    Ok(input)
+}
+
+#[tauri::command]
 fn pick_folder() -> Option<String> {
     rfd::FileDialog::new()
         .pick_folder()
@@ -722,6 +757,8 @@ pub fn run() {
             list_messages,
             save_diff,
             list_diffs,
+            read_auth_config,
+            write_auth_config,
             pick_folder,
             agent_read_file,
             agent_write_file,
