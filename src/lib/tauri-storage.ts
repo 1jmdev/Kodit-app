@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Message, Project, Thread, ToolCall } from "@/store/types";
+import type { Message, Project, Thread, ToolCall, TodoItem, Question } from "@/store/types";
 
 type BackendMessageRole = "user" | "agent" | "system";
 type BackendMode = "build";
@@ -48,6 +48,8 @@ interface PersistedMessageMetadata {
   version: 1;
   reasoning?: string;
   toolCalls?: ToolCall[];
+  todos?: TodoItem[];
+  questions?: Question[];
 }
 
 const MESSAGE_METADATA_PREFIX = "\n\n[KODIT_META]";
@@ -111,10 +113,58 @@ function decodeStoredMessageContent(rawContent: string): {
         }, [])
       : undefined;
 
+    const todos = Array.isArray(parsed.todos)
+      ? parsed.todos.reduce<TodoItem[]>((acc, item) => {
+          if (!item || typeof item !== "object") return acc;
+          const candidate = item as Partial<TodoItem>;
+          if (
+            typeof candidate.id !== "string" ||
+            typeof candidate.content !== "string" ||
+            !["pending", "in_progress", "completed", "cancelled"].includes(candidate.status as string)
+          ) {
+            return acc;
+          }
+          acc.push({
+            id: candidate.id,
+            content: candidate.content,
+            status: candidate.status as TodoItem["status"],
+            priority: ["high", "medium", "low"].includes(candidate.priority as string)
+              ? (candidate.priority as TodoItem["priority"])
+              : undefined,
+          });
+          return acc;
+        }, [])
+      : undefined;
+
+    const questions = Array.isArray(parsed.questions)
+      ? parsed.questions.reduce<Question[]>((acc, item) => {
+          if (!item || typeof item !== "object") return acc;
+          const candidate = item as Partial<Question>;
+          if (
+            typeof candidate.question !== "string" ||
+            typeof candidate.header !== "string" ||
+            !Array.isArray(candidate.options)
+          ) {
+            return acc;
+          }
+          acc.push({
+            question: candidate.question,
+            header: candidate.header,
+            options: candidate.options,
+            multiple: candidate.multiple,
+            custom: candidate.custom,
+            answers: Array.isArray(candidate.answers) ? candidate.answers : undefined,
+          });
+          return acc;
+        }, [])
+      : undefined;
+
     const metadata: PersistedMessageMetadata = {
       version: 1,
       reasoning: typeof parsed.reasoning === "string" ? parsed.reasoning : undefined,
       toolCalls: toolCalls && toolCalls.length > 0 ? toolCalls : undefined,
+      todos: todos && todos.length > 0 ? todos : undefined,
+      questions: questions && questions.length > 0 ? questions : undefined,
     };
 
     return {
@@ -130,14 +180,18 @@ function encodeStoredMessageContent(params: {
   content: string;
   reasoning?: string;
   toolCalls?: ToolCall[];
+  todos?: TodoItem[];
+  questions?: Question[];
 }): string {
   const metadata: PersistedMessageMetadata = {
     version: 1,
     reasoning: params.reasoning?.trim() ? params.reasoning : undefined,
     toolCalls: params.toolCalls?.length ? params.toolCalls : undefined,
+    todos: params.todos?.length ? params.todos : undefined,
+    questions: params.questions?.length ? params.questions : undefined,
   };
 
-  if (!metadata.reasoning && !metadata.toolCalls) {
+  if (!metadata.reasoning && !metadata.toolCalls && !metadata.todos && !metadata.questions) {
     return params.content;
   }
 
@@ -224,6 +278,8 @@ function mapMessage(message: BackendMessage): Message {
       cacheWrite: message.tokens.cache_write,
     },
     toolCalls: decoded.metadata?.toolCalls,
+    todos: decoded.metadata?.todos,
+    questions: decoded.metadata?.questions,
   };
 }
 
@@ -288,6 +344,8 @@ export async function addMessage(params: {
   content: string;
   reasoning?: string;
   toolCalls?: ToolCall[];
+  todos?: TodoItem[];
+  questions?: Question[];
   model?: string;
   provider?: string;
   mode?: BackendMode;
@@ -304,6 +362,8 @@ export async function addMessage(params: {
     content: params.content,
     reasoning: params.reasoning,
     toolCalls: params.toolCalls,
+    todos: params.todos,
+    questions: params.questions,
   });
 
   const message = await invoke<BackendMessage>("add_message", {

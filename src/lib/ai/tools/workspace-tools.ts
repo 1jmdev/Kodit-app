@@ -1,58 +1,29 @@
-import { tool } from "ai";
-import { z } from "zod";
-import { agentReadFile, agentRunCommand, agentWriteFile } from "@/lib/tauri-storage";
+import { createReadFileTool } from "@/lib/ai/tools/read";
+import { createEditTool } from "@/lib/ai/tools/edit";
+import { createShellTool } from "@/lib/ai/tools/bash";
+import { createTodoWriteTool } from "@/lib/ai/tools/todo-write";
+import { createTodoReadTool } from "@/lib/ai/tools/todo-read";
+import { createQuestionTool } from "@/lib/ai/tools/question";
+import { createTodoStore } from "@/lib/ai/tools/todo-store";
+import type { TodoStore } from "@/lib/ai/tools/todo-store";
+
+export interface WorkspaceToolsContext {
+  todoStore: TodoStore;
+}
 
 export function createWorkspaceTools(workspacePath: string) {
-  return {
-    read_file: tool({
-      description: "Read a text file from the workspace",
-      inputSchema: z.object({
-        path: z.string().min(1).describe("File path to read, relative or absolute"),
-        offset: z.number().int().min(0).optional().describe("0-based line offset"),
-        limit: z.number().int().min(1).max(4000).optional().describe("Max lines to read"),
-      }),
-      execute: async ({ path, offset, limit }) => {
-        return agentReadFile({
-          workspacePath,
-          path,
-          offset,
-          limit,
-        });
-      },
-    }),
-    write_file: tool({
-      description: "Write complete text content into a file in the workspace",
-      inputSchema: z.object({
-        path: z.string().min(1).describe("File path to write, relative or absolute"),
-        content: z.string().describe("Full file contents to write"),
-        create_dirs: z.boolean().optional().describe("Create missing parent directories"),
-      }),
-      execute: async ({ path, content, create_dirs }) => {
-        return agentWriteFile({
-          workspacePath,
-          path,
-          content,
-          createDirs: create_dirs,
-        });
-      },
-    }),
-    run_command: tool({
-      description: "Run a shell command in workspace",
-      inputSchema: z.object({
-        command: z.string().min(1).describe("Shell command to execute"),
-        workdir: z.string().optional().describe("Working directory inside workspace"),
-        timeout_ms: z.number().int().min(100).max(120000).optional().describe("Timeout in milliseconds"),
-      }),
-      execute: async ({ command, workdir, timeout_ms }) => {
-        return agentRunCommand({
-          workspacePath,
-          command,
-          workdir,
-          timeoutMs: timeout_ms,
-        });
-      },
-    }),
+  const todoStore = createTodoStore();
+
+  const tools = {
+    read_file: createReadFileTool(workspacePath),
+    shell: createShellTool(workspacePath),
+    edit: createEditTool(workspacePath),
+    todo_write: createTodoWriteTool(todoStore),
+    todo_read: createTodoReadTool(todoStore),
+    question: createQuestionTool(),
   };
+
+  return { tools, context: { todoStore } satisfies WorkspaceToolsContext };
 }
 
 function truncateValue(value: unknown, maxLength = 500): string {
@@ -68,14 +39,23 @@ export function toToolLabel(toolName: string, input: unknown): string {
   const path = typeof args.path === "string" ? args.path : "file";
   const command = typeof args.command === "string" ? args.command : "command";
 
-  if (toolName === "write_file") {
+  if (toolName === "edit") {
     return `Edited ${path}`;
   }
-  if (toolName === "run_command") {
+  if (toolName === "shell") {
     return `Ran ${command}`;
   }
   if (toolName === "read_file") {
     return `Read ${path}`;
+  }
+  if (toolName === "todo_write") {
+    return "Updated TODOs";
+  }
+  if (toolName === "todo_read") {
+    return "Read TODOs";
+  }
+  if (toolName === "question") {
+    return "Asked question";
   }
   return toolName;
 }

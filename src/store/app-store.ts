@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { AppState, Thread, Message, ModelConfig, WindowSettings } from "./types";
+import type { AppState, Thread, Message, ModelConfig, WindowSettings, TodoItem, Question } from "./types";
 import { mockModels, defaultModel } from "./mock-data";
 
 function getModelKey(model: ModelConfig): string {
@@ -48,6 +48,8 @@ export type AppAction =
       reasoning?: string;
       isStreaming?: boolean;
       toolCalls?: Message["toolCalls"];
+      todos?: TodoItem[];
+      questions?: Question[];
     }
   | { type: "SET_ACTIVE_PROJECT"; projectId: string }
   | { type: "SET_AVAILABLE_MODELS"; models: ModelConfig[] }
@@ -157,6 +159,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
                         reasoning: action.reasoning ?? m.reasoning,
                         isStreaming: action.isStreaming ?? m.isStreaming,
                         toolCalls: action.toolCalls ?? m.toolCalls,
+                        todos: action.todos ?? m.todos,
+                        questions: action.questions ?? m.questions,
                       }
                     : m,
                 ),

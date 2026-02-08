@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useSyncExternalStore } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,13 @@ import {
 import { getProviderApiKeyHint, streamProviderText, validateProviderApiKey } from "@/lib/ai";
 import { getProviderPreset } from "@/lib/ai/providers";
 import { addMessage, createProject, createThread } from "@/lib/tauri-storage";
+import {
+  getPendingQuestions,
+  subscribePendingQuestions,
+  answerQuestions,
+  clearPendingQuestions,
+} from "@/lib/ai/question-bridge";
+import type { QuestionInput, QuestionAnswer } from "@/lib/ai/question-bridge";
 import { cn } from "@/lib/utils";
 import {
   ArrowUp,
@@ -41,6 +48,13 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const navigate = useNavigate();
 
+  // Subscribe to the global question bridge
+  const pendingQuestions = useSyncExternalStore(
+    subscribePendingQuestions,
+    getPendingQuestions,
+  );
+  const isWaitingForAnswer = pendingQuestions !== null;
+
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -48,9 +62,23 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
     }
   }, [input]);
 
-  async function handleSubmit() {
-    if (!input.trim()) return;
+  function handleAnswerQuestions(answers: QuestionAnswer[]) {
+    answerQuestions(answers);
+  }
 
+  async function handleSubmit() {
+    // If there's a pending question, treat the input as a custom answer
+    if (isWaitingForAnswer && pendingQuestions && input.trim()) {
+      const answers: QuestionAnswer[] = pendingQuestions.map((q) => ({
+        question: q.question,
+        answers: [input.trim()],
+      }));
+      handleAnswerQuestions(answers);
+      setInput("");
+      return;
+    }
+
+    if (!input.trim()) return;
     if (isGenerating) return;
 
     const userInput = input.trim();
@@ -178,7 +206,7 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
         onChunk: (chunk) => {
           dispatch({
             type: "UPDATE_MESSAGE",
-            threadId,
+            threadId: threadId!,
             messageId: assistantMessageId,
             content: chunk,
             isStreaming: true,
@@ -187,7 +215,7 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
         onReasoning: (reasoning) => {
           dispatch({
             type: "UPDATE_MESSAGE",
-            threadId,
+            threadId: threadId!,
             messageId: assistantMessageId,
             reasoning,
             isStreaming: true,
@@ -196,9 +224,18 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
         onToolCalls: (toolCalls) => {
           dispatch({
             type: "UPDATE_MESSAGE",
-            threadId,
+            threadId: threadId!,
             messageId: assistantMessageId,
             toolCalls,
+            isStreaming: true,
+          });
+        },
+        onTodos: (todos) => {
+          dispatch({
+            type: "UPDATE_MESSAGE",
+            threadId: threadId!,
+            messageId: assistantMessageId,
+            todos,
             isStreaming: true,
           });
         },
@@ -210,6 +247,7 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
         content: streamResult.text || "No response received from model.",
         reasoning: streamResult.reasoning,
         toolCalls: streamResult.toolCalls,
+        todos: streamResult.todos,
         mode: "build",
         model: state.selectedModel.id,
         provider: state.selectedModel.provider,
@@ -242,6 +280,7 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
       });
     } finally {
       setIsGenerating(false);
+      clearPendingQuestions();
     }
   }
 
@@ -259,6 +298,27 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
       "w-full",
       isHome ? "max-w-2xl mx-auto" : ""
     )}>
+      {/* Question cards */}
+      {isWaitingForAnswer && pendingQuestions && (
+        <div className="mb-3 space-y-3">
+          {pendingQuestions.map((q, qi) => (
+            <QuestionCard
+              key={qi}
+              question={q}
+              onAnswer={(answers) => {
+                handleAnswerQuestions(
+                  pendingQuestions.map((pq, pqi) =>
+                    pqi === qi
+                      ? { question: pq.question, answers }
+                      : { question: pq.question, answers: [] }
+                  ),
+                );
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       <div className={cn(
         "relative rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm transition-all",
         "focus-within:border-border focus-within:ring-1 focus-within:ring-ring/20",
@@ -270,7 +330,11 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder || (isHome ? "What do you want to build?" : "Ask for follow-up changes")}
+          placeholder={
+            isWaitingForAnswer
+              ? "Type your own answer..."
+              : placeholder || (isHome ? "What do you want to build?" : "Ask for follow-up changes")
+          }
           rows={1}
           className={cn(
             "w-full resize-none bg-transparent px-4 pt-3.5 pb-2 text-sm placeholder:text-muted-foreground/60 outline-none",
@@ -343,7 +407,7 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
             <Button
               size="icon-sm"
               onClick={() => void handleSubmit()}
-              disabled={!input.trim() || isGenerating}
+              disabled={(!input.trim() && !isWaitingForAnswer) || (isGenerating && !isWaitingForAnswer)}
               className={cn(
                 "rounded-lg transition-all",
                 input.trim()
@@ -355,6 +419,95 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Interactive question card rendered when the agent asks the user a question.
+ */
+function QuestionCard({
+  question,
+  onAnswer,
+}: {
+  question: QuestionInput;
+  onAnswer: (answers: string[]) => void;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const isMultiple = question.multiple ?? false;
+
+  function toggleOption(label: string) {
+    if (isMultiple) {
+      setSelected((prev) => {
+        const next = new Set(prev);
+        if (next.has(label)) next.delete(label);
+        else next.add(label);
+        return next;
+      });
+    } else {
+      // Single select: pick and submit immediately
+      onAnswer([label]);
+    }
+  }
+
+  function handleSubmitMultiple() {
+    if (selected.size > 0) {
+      onAnswer(Array.from(selected));
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+      <div className="px-4 py-2.5 border-b border-border/30">
+        <div className="text-xs font-medium text-muted-foreground">{question.header}</div>
+        <div className="text-sm text-foreground mt-0.5">{question.question}</div>
+      </div>
+      <div className="p-2 space-y-1">
+        {question.options.map((opt) => (
+          <button
+            key={opt.label}
+            onClick={() => toggleOption(opt.label)}
+            className={cn(
+              "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
+              selected.has(opt.label)
+                ? "bg-accent text-foreground"
+                : "hover:bg-accent/50 text-foreground/80"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              {isMultiple && (
+                <div className={cn(
+                  "size-4 rounded border flex items-center justify-center shrink-0",
+                  selected.has(opt.label)
+                    ? "bg-foreground border-foreground"
+                    : "border-border"
+                )}>
+                  {selected.has(opt.label) && (
+                    <svg className="size-3 text-background" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </div>
+              )}
+              <div>
+                <div className="font-medium">{opt.label}</div>
+                <div className="text-xs text-muted-foreground">{opt.description}</div>
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+      {isMultiple && selected.size > 0 && (
+        <div className="px-4 pb-3">
+          <Button
+            size="sm"
+            onClick={handleSubmitMultiple}
+            className="w-full"
+          >
+            Submit ({selected.size} selected)
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

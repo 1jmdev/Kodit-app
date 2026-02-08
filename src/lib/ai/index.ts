@@ -8,6 +8,10 @@ import {
   toToolLabel,
 } from "@/lib/ai/tools/workspace-tools";
 import type { Message, ModelConfig, ToolCall } from "@/store/types";
+import type { TodoItem } from "@/lib/ai/tools/todo-store";
+
+export type { QuestionInput, QuestionAnswer } from "@/lib/ai/question-bridge";
+export type { TodoItem } from "@/lib/ai/tools/todo-store";
 
 interface StreamTextParams {
   providerId: string;
@@ -18,12 +22,14 @@ interface StreamTextParams {
   onChunk: (chunk: string) => void;
   onReasoning?: (reasoning: string) => void;
   onToolCalls?: (toolCalls: ToolCall[]) => void;
+  onTodos?: (todos: TodoItem[]) => void;
 }
 
 interface StreamProviderTextResult {
   text: string;
   reasoning: string;
   toolCalls: ToolCall[];
+  todos: TodoItem[];
 }
 
 export function validateProviderApiKey(providerId: string, apiKey: string) {
@@ -47,6 +53,7 @@ export async function streamProviderText({
   onChunk,
   onReasoning,
   onToolCalls,
+  onTodos,
 }: StreamTextParams): Promise<StreamProviderTextResult> {
   const providerPreset = getProviderPreset(providerId);
   const keyValidation = providerPreset.validateApiKey(apiKey);
@@ -74,11 +81,13 @@ export async function streamProviderText({
     emitToolCalls();
   }
 
+  const { tools, context } = createWorkspaceTools(workspacePath);
+
   const agent = new ToolLoopAgent({
     model: providerPreset.createModel(apiKey, modelId),
     stopWhen: stepCountIs(20),
     instructions: koditSystemPrompt.text,
-    tools: createWorkspaceTools(workspacePath),
+    tools,
   });
 
   const result = await agent.stream({
@@ -137,6 +146,11 @@ export async function streamProviderText({
           status: "completed",
           result: serializeToolResult(part.output),
         });
+
+        // Emit todo updates whenever the todo store changes
+        if (part.toolName === "todo_write" || part.toolName === "todo_read") {
+          onTodos?.(context.todoStore.get());
+        }
         break;
       }
       case "tool-error": {
@@ -184,5 +198,6 @@ export async function streamProviderText({
     text: fullText,
     reasoning: fullReasoning,
     toolCalls: finalizedToolCalls,
+    todos: context.todoStore.get(),
   };
 }

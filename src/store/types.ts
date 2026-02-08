@@ -50,6 +50,8 @@ export interface Message {
   fileEdits?: FileEdit[];
   isStreaming?: boolean;
   toolCalls?: ToolCall[];
+  todos?: TodoItem[];
+  questions?: Question[];
 }
 
 export interface ToolCall {
@@ -58,6 +60,27 @@ export interface ToolCall {
   args: string;
   result?: string;
   status: "pending" | "running" | "completed" | "failed";
+}
+
+export interface TodoItem {
+  id: string;
+  content: string;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  priority?: "high" | "medium" | "low";
+}
+
+export interface QuestionOption {
+  label: string;
+  description: string;
+}
+
+export interface Question {
+  question: string;
+  header: string;
+  options: QuestionOption[];
+  multiple?: boolean;
+  custom?: boolean;
+  answers?: string[];
 }
 
 export interface Thread {

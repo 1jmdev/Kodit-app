@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { useAppStore } from "@/store/app-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import type { Message, FileEdit, ToolCall } from "@/store/types";
+import type { Message, FileEdit, ToolCall, TodoItem } from "@/store/types";
 import {
   FileCode,
   ChevronRight,
@@ -11,6 +11,11 @@ import {
   Search,
   Undo2,
   Brain,
+  ListTodo,
+  CheckCircle2,
+  Circle,
+  Clock,
+  XCircle,
 } from "lucide-react";
 import { MarkdownRenderer } from "@/components/markdown";
 
@@ -22,6 +27,10 @@ const ToolCallItem = memo(function ToolCallItem({ toolCall }: { toolCall: ToolCa
           <FileCode className="size-3.5 text-amber-400" />
         ) : toolCall.name.startsWith("Ran") ? (
           <Terminal className="size-3.5 text-blue-400" />
+        ) : toolCall.name.startsWith("Updated TODO") || toolCall.name.startsWith("Read TODO") ? (
+          <ListTodo className="size-3.5 text-green-400" />
+        ) : toolCall.name.startsWith("Asked question") ? (
+          <Circle className="size-3.5 text-orange-400" />
         ) : (
           <Search className="size-3.5 text-purple-400" />
         )}
@@ -32,6 +41,68 @@ const ToolCallItem = memo(function ToolCallItem({ toolCall }: { toolCall: ToolCa
           </>
         )}
         <ChevronRight className="size-3 text-muted-foreground/40" />
+      </div>
+    </div>
+  );
+});
+
+const TodoStatusIcon = memo(function TodoStatusIcon({ status }: { status: TodoItem["status"] }) {
+  switch (status) {
+    case "completed":
+      return <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0" />;
+    case "in_progress":
+      return <Clock className="size-3.5 text-blue-400 shrink-0 animate-pulse" />;
+    case "cancelled":
+      return <XCircle className="size-3.5 text-red-400 shrink-0" />;
+    default:
+      return <Circle className="size-3.5 text-muted-foreground/50 shrink-0" />;
+  }
+});
+
+const TodoList = memo(function TodoList({ todos }: { todos: TodoItem[] }) {
+  const completed = todos.filter((t) => t.status === "completed").length;
+
+  return (
+    <div className="mt-3 rounded-xl border border-border/50 bg-card/30 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border/30">
+        <div className="flex items-center gap-2">
+          <ListTodo className="size-3.5 text-muted-foreground" />
+          <span className="text-xs font-medium text-foreground/80">Tasks</span>
+        </div>
+        <span className="text-xs font-mono text-muted-foreground">
+          {completed}/{todos.length}
+        </span>
+      </div>
+      <div className="divide-y divide-border/20">
+        {todos.map((todo) => (
+          <div
+            key={todo.id}
+            className="flex items-start gap-2 px-4 py-1.5"
+          >
+            <div className="mt-0.5">
+              <TodoStatusIcon status={todo.status} />
+            </div>
+            <span className={cn(
+              "text-xs leading-relaxed",
+              todo.status === "completed" && "line-through text-muted-foreground/60",
+              todo.status === "cancelled" && "line-through text-muted-foreground/40",
+              todo.status === "in_progress" && "text-foreground",
+              todo.status === "pending" && "text-foreground/70",
+            )}>
+              {todo.content}
+            </span>
+            {todo.priority && (
+              <span className={cn(
+                "text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ml-auto",
+                todo.priority === "high" && "bg-red-500/15 text-red-400",
+                todo.priority === "medium" && "bg-amber-500/15 text-amber-400",
+                todo.priority === "low" && "bg-blue-500/15 text-blue-400",
+              )}>
+                {todo.priority}
+              </span>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -122,6 +193,11 @@ const MessageBubble = memo(function MessageBubble({ message }: { message: Messag
           <MarkdownRenderer content={message.content} isStreaming={message.isStreaming} />
           {message.isStreaming && !isUser && <span className="inline-block h-4 w-1 animate-pulse rounded-sm bg-foreground/70 align-middle" />}
         </div>
+
+        {/* Todos */}
+        {!isUser && message.todos && message.todos.length > 0 && (
+          <TodoList todos={message.todos} />
+        )}
 
         {/* File edits summary */}
         {!isUser && message.fileEdits && message.fileEdits.length > 0 && (
