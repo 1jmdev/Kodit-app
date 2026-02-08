@@ -364,14 +364,20 @@ export function SettingsPage() {
                         <div className="truncate text-sm font-medium">{model.name}</div>
                         <div className="truncate text-xs text-muted-foreground">{model.id}</div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={exists}
-                        onClick={() => handleAddModelProfile(model)}
-                      >
-                        {exists ? "Added" : "Add"}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="max-w-28 truncate">
+                          {model.provider}
+                        </Badge>
+                        <Button
+                          size="sm"
+                          className="w-16"
+                          variant="outline"
+                          disabled={exists}
+                          onClick={() => handleAddModelProfile(model)}
+                        >
+                          {exists ? "Added" : "Add"}
+                        </Button>
+                      </div>
                     </div>
                   );
                 })}
@@ -394,8 +400,12 @@ export function SettingsPage() {
                         <div className="truncate text-xs text-muted-foreground">{profile.id}</div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="max-w-28 truncate">
+                          {profile.provider}
+                        </Badge>
                         <Button
                           size="sm"
+                          className="w-16"
                           variant={isSelected ? "default" : "outline"}
                           onClick={() => handleSelectModelProfile(profile)}
                         >
