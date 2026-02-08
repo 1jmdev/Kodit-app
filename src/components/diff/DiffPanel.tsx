@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { useAppStore } from "@/store/app-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { DiffPanelHeader } from "@/components/app/diff-panel/DiffPanelHeader";
-import { DiffFileBlock } from "@/components/app/diff-panel/DiffFileBlock";
-import { DiffPanelFooter } from "@/components/app/diff-panel/DiffPanelFooter";
+import { DiffPanelHeader } from "@/components/diff/panel/DiffPanelHeader";
+import { DiffFileBlock } from "@/components/diff/panel/DiffFileBlock";
+import { DiffPanelFooter } from "@/components/diff/panel/DiffPanelFooter";
 import { aggregateDiffSnapshots, buildThreadDiffStats } from "@/lib/diff-utils";
 import {
   agentDeleteFile,

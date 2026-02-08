@@ -1,11 +1,11 @@
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useAppStore } from "@/store/app-store";
-import { ChatView } from "@/components/app/ChatView";
-import { DiffPanel } from "@/components/app/DiffPanel";
-import { TopBar } from "@/components/app/TopBar";
-import { ThreadTodoBar } from "@/components/app/ThreadTodoBar";
-import { PromptInput } from "@/components/app/PromptInput";
+import { ChatView } from "@/components/chat/ChatView";
+import { DiffPanel } from "@/components/diff/DiffPanel";
+import { TopBar } from "@/components/chat/TopBar";
+import { ThreadTodoBar } from "@/components/chat/ThreadTodoBar";
+import { PromptInput } from "@/components/prompt-input/PromptInput";
 import {
   ResizablePanelGroup,
   ResizablePanel,

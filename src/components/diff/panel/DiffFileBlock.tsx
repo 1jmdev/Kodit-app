@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, FileCode } from "lucide-react";
 import type { FileChange } from "@/store/types";
-import { DiffLineRow } from "@/components/app/diff-panel/DiffLineRow";
+import { DiffLineRow } from "@/components/diff/panel/DiffLineRow";
 import { hasGrammar, resolveLanguage } from "@/components/markdown/prism-languages";
 
 interface DiffFileBlockProps {

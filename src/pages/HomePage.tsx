@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "@/store/app-store";
 import { pickFolder } from "@/lib/tauri-storage";
-import { PromptInput } from "@/components/app/PromptInput";
+import { PromptInput } from "@/components/prompt-input/PromptInput";
+import type { PendingProject } from "@/components/prompt-input/types";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -10,11 +11,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { FolderOpen, ChevronDown } from "lucide-react";
-
-interface PendingProject {
-  name: string;
-  workspacePath: string;
-}
 
 export function HomePage() {
   const { state, dispatch } = useAppStore();
