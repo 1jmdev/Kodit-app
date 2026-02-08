@@ -302,12 +302,11 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
             </Tooltip>
 
             {/* Model selector */}
-             <DropdownMenu>
+            <DropdownMenu>
               <DropdownMenuTrigger
                 render={
                   <button className="ml-1.5 flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors">
                     <span className="font-medium">{state.selectedModel.name}</span>
-                    <span className="text-muted-foreground/60">{state.selectedModel.qualityLevel}</span>
                     <ChevronDown className="size-3 text-muted-foreground/50" />
                   </button>
                 }
@@ -315,12 +314,12 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
               <DropdownMenuContent align="start" side="top" sideOffset={8} className="max-h-72 w-80 overflow-y-auto">
                 {modelProfiles.map((model) => (
                   <DropdownMenuItem
-                    key={model.id}
+                    key={`${model.providerId}:${model.id}`}
                     onClick={() => dispatch({ type: "SET_MODEL", model })}
                   >
                     <div className="flex items-center justify-between w-full gap-4">
-                      <span className="font-medium">{model.name}</span>
-                      <span className="text-xs text-muted-foreground">{model.qualityLevel}</span>
+                      <span className="font-medium truncate">{model.name}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">{model.provider}</span>
                     </div>
                   </DropdownMenuItem>
                 ))}

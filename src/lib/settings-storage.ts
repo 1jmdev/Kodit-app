@@ -19,7 +19,6 @@ const settingsSchema = z.object({
         name: z.string(),
         providerId: z.string(),
         provider: z.string(),
-        qualityLevel: z.enum(["Low", "Medium", "High", "Extra High"]),
       }),
     )
     .default([defaultModel]),

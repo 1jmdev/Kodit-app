@@ -86,7 +86,6 @@ export interface ModelConfig {
   name: string;
   providerId: string;
   provider: string;
-  qualityLevel: "Low" | "Medium" | "High" | "Extra High";
 }
 
 export interface WindowSettings {

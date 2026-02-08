@@ -19,35 +19,12 @@ const apiKeySchema = z
   .min(1, "OpenRouter API key is required")
   .regex(/^sk-or-v1-/, "OpenRouter API key must start with sk-or-v1-");
 
-function getQualityLevel(contextLength?: number): ModelConfig["qualityLevel"] {
-  if (!contextLength) {
-    return "Medium";
-  }
-
-  if (contextLength >= 200000) {
-    return "Extra High";
-  }
-
-  if (contextLength >= 64000) {
-    return "High";
-  }
-
-  if (contextLength >= 16000) {
-    return "Medium";
-  }
-
-  return "Low";
-}
-
 function mapToModelConfig(model: z.infer<typeof modelSchema>): ModelConfig {
-  const provider = model.id.includes("/") ? model.id.split("/")[0] : "openrouter";
-
   return {
     id: model.id,
     name: model.name || model.id,
     providerId: "openrouter",
-    provider: provider.charAt(0).toUpperCase() + provider.slice(1),
-    qualityLevel: getQualityLevel(model.context_length ?? undefined),
+    provider: "OpenRouter",
   };
 }
 
