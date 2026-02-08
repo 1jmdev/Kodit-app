@@ -10,6 +10,7 @@ import {
   Terminal,
   Search,
   Undo2,
+  Brain,
 } from "lucide-react";
 
 const ToolCallItem = memo(function ToolCallItem({ toolCall }: { toolCall: ToolCall }) {
@@ -99,6 +100,17 @@ const MessageBubble = memo(function MessageBubble({ message }: { message: Messag
             {message.toolCalls.map((tc) => (
               <ToolCallItem key={tc.id} toolCall={tc} />
             ))}
+          </div>
+        )}
+
+        {/* Reasoning */}
+        {!isUser && message.reasoning && (
+          <div className="mb-3 rounded-lg border border-border/40 bg-card/30 px-3 py-2 text-xs text-muted-foreground">
+            <div className="mb-1 flex items-center gap-1.5 font-medium text-foreground/75">
+              <Brain className="size-3.5" />
+              <span>Thinking</span>
+            </div>
+            <p className="whitespace-pre-wrap leading-relaxed">{message.reasoning}</p>
           </div>
         )}
 

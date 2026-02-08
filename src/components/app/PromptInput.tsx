@@ -132,6 +132,7 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
         id: assistantMessageId,
         role: "agent",
         content: "",
+        reasoning: "",
         timestamp: Date.now(),
         isStreaming: true,
         model: state.selectedModel.id,
@@ -168,7 +169,7 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
 
     setIsGenerating(true);
     try {
-      const text = await streamProviderText({
+      const streamResult = await streamProviderText({
         providerId,
         apiKey: providerApiKey,
         modelId: state.selectedModel.id,
@@ -180,6 +181,15 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
             threadId,
             messageId: assistantMessageId,
             content: chunk,
+            isStreaming: true,
+          });
+        },
+        onReasoning: (reasoning) => {
+          dispatch({
+            type: "UPDATE_MESSAGE",
+            threadId,
+            messageId: assistantMessageId,
+            reasoning,
             isStreaming: true,
           });
         },
@@ -197,7 +207,9 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
       const savedAgentMessage = await addMessage({
         threadId,
         role: "agent",
-        content: text || "No response received from model.",
+        content: streamResult.text || "No response received from model.",
+        reasoning: streamResult.reasoning,
+        toolCalls: streamResult.toolCalls,
         mode: "build",
         model: state.selectedModel.id,
         provider: state.selectedModel.provider,

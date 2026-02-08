@@ -45,6 +45,7 @@ export type AppAction =
       threadId: string;
       messageId: string;
       content?: string;
+      reasoning?: string;
       isStreaming?: boolean;
       toolCalls?: Message["toolCalls"];
     }
@@ -153,6 +154,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
                     ? {
                         ...m,
                         content: action.content ?? m.content,
+                        reasoning: action.reasoning ?? m.reasoning,
                         isStreaming: action.isStreaming ?? m.isStreaming,
                         toolCalls: action.toolCalls ?? m.toolCalls,
                       }

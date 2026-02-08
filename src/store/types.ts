@@ -34,6 +34,7 @@ export interface Message {
   id: string;
   role: MessageRole;
   content: string;
+  reasoning?: string;
   timestamp: number;
   model?: string;
   provider?: string;

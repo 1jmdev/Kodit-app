@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Message, Project, Thread } from "@/store/types";
+import type { Message, Project, Thread, ToolCall } from "@/store/types";
 
 type BackendMessageRole = "user" | "agent" | "system";
 type BackendMode = "build";
@@ -42,6 +42,108 @@ interface BackendMessage {
   created_at_ms: number;
   updated_at_ms: number;
   sequence: number;
+}
+
+interface PersistedMessageMetadata {
+  version: 1;
+  reasoning?: string;
+  toolCalls?: ToolCall[];
+}
+
+const MESSAGE_METADATA_PREFIX = "\n\n[KODIT_META]";
+const MESSAGE_METADATA_SUFFIX = "[/KODIT_META]";
+
+function isToolCallStatus(value: unknown): value is ToolCall["status"] {
+  return (
+    value === "pending" ||
+    value === "running" ||
+    value === "completed" ||
+    value === "failed"
+  );
+}
+
+function decodeStoredMessageContent(rawContent: string): {
+  content: string;
+  metadata?: PersistedMessageMetadata;
+} {
+  const start = rawContent.lastIndexOf(MESSAGE_METADATA_PREFIX);
+  if (start < 0) {
+    return { content: rawContent };
+  }
+
+  const metadataStart = start + MESSAGE_METADATA_PREFIX.length;
+  const end = rawContent.indexOf(MESSAGE_METADATA_SUFFIX, metadataStart);
+  if (end < 0 || end + MESSAGE_METADATA_SUFFIX.length !== rawContent.length) {
+    return { content: rawContent };
+  }
+
+  const metadataRaw = rawContent.slice(metadataStart, end);
+  try {
+    const parsed = JSON.parse(metadataRaw) as Partial<PersistedMessageMetadata>;
+    if (parsed.version !== 1) {
+      return { content: rawContent };
+    }
+
+    const toolCalls = Array.isArray(parsed.toolCalls)
+      ? parsed.toolCalls.reduce<ToolCall[]>((acc, toolCall) => {
+          if (!toolCall || typeof toolCall !== "object") {
+            return acc;
+          }
+          const candidate = toolCall as Partial<ToolCall>;
+          if (
+            typeof candidate.id !== "string" ||
+            typeof candidate.name !== "string" ||
+            typeof candidate.args !== "string" ||
+            !isToolCallStatus(candidate.status)
+          ) {
+            return acc;
+          }
+
+          acc.push({
+            id: candidate.id,
+            name: candidate.name,
+            args: candidate.args,
+            status: candidate.status,
+            result: typeof candidate.result === "string" ? candidate.result : undefined,
+          });
+
+          return acc;
+        }, [])
+      : undefined;
+
+    const metadata: PersistedMessageMetadata = {
+      version: 1,
+      reasoning: typeof parsed.reasoning === "string" ? parsed.reasoning : undefined,
+      toolCalls: toolCalls && toolCalls.length > 0 ? toolCalls : undefined,
+    };
+
+    return {
+      content: rawContent.slice(0, start),
+      metadata,
+    };
+  } catch {
+    return { content: rawContent };
+  }
+}
+
+function encodeStoredMessageContent(params: {
+  content: string;
+  reasoning?: string;
+  toolCalls?: ToolCall[];
+}): string {
+  const metadata: PersistedMessageMetadata = {
+    version: 1,
+    reasoning: params.reasoning?.trim() ? params.reasoning : undefined,
+    toolCalls: params.toolCalls?.length ? params.toolCalls : undefined,
+  };
+
+  if (!metadata.reasoning && !metadata.toolCalls) {
+    return params.content;
+  }
+
+  return `${params.content}${MESSAGE_METADATA_PREFIX}${JSON.stringify(
+    metadata,
+  )}${MESSAGE_METADATA_SUFFIX}`;
 }
 
 export interface AgentReadFileResult {
@@ -102,10 +204,13 @@ function mapThread(thread: BackendThread): Thread {
 }
 
 function mapMessage(message: BackendMessage): Message {
+  const decoded = decodeStoredMessageContent(message.content);
+
   return {
     id: message.id,
     role: message.role,
-    content: message.content,
+    content: decoded.content,
+    reasoning: decoded.metadata?.reasoning,
     timestamp: message.created_at_ms,
     model: message.model || undefined,
     provider: message.provider || undefined,
@@ -118,6 +223,7 @@ function mapMessage(message: BackendMessage): Message {
       cacheRead: message.tokens.cache_read,
       cacheWrite: message.tokens.cache_write,
     },
+    toolCalls: decoded.metadata?.toolCalls,
   };
 }
 
@@ -180,6 +286,8 @@ export async function addMessage(params: {
   threadId: string;
   role: BackendMessageRole;
   content: string;
+  reasoning?: string;
+  toolCalls?: ToolCall[];
   model?: string;
   provider?: string;
   mode?: BackendMode;
@@ -192,11 +300,17 @@ export async function addMessage(params: {
     cacheWrite: number;
   };
 }): Promise<Message> {
+  const content = encodeStoredMessageContent({
+    content: params.content,
+    reasoning: params.reasoning,
+    toolCalls: params.toolCalls,
+  });
+
   const message = await invoke<BackendMessage>("add_message", {
     input: {
       thread_id: params.threadId,
       role: params.role,
-      content: params.content,
+      content,
       model: params.model,
       provider: params.provider,
       mode: params.mode ?? "build",
