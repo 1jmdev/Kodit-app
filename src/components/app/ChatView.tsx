@@ -119,7 +119,7 @@ const MessageBubble = memo(function MessageBubble({ message }: { message: Messag
           "text-sm leading-relaxed",
           isUser ? "text-foreground" : "text-foreground/90"
         )}>
-          <MarkdownRenderer content={message.content} />
+          <MarkdownRenderer content={message.content} isStreaming={message.isStreaming} />
           {message.isStreaming && !isUser && <span className="inline-block h-4 w-1 animate-pulse rounded-sm bg-foreground/70 align-middle" />}
         </div>
 
