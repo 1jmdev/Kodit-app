@@ -9,7 +9,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { OPENROUTER_API_KEY_HINT, streamOpenRouterText, validateOpenRouterApiKey } from "@/lib/openrouter";
+import { getProviderApiKeyHint, streamProviderText, validateProviderApiKey } from "@/lib/ai";
+import { getProviderPreset } from "@/lib/ai/providers";
 import { addMessage, createProject, createThread } from "@/lib/tauri-storage";
 import { cn } from "@/lib/utils";
 import {
@@ -138,12 +139,15 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
 
     const threadMessages = [...previousMessages, userMessage];
 
-    const keyValidation = validateOpenRouterApiKey(state.settings.openRouterApiKey);
+    const providerId = state.selectedModel.providerId;
+    const providerLabel = getProviderPreset(providerId).label;
+    const providerApiKey = state.settings.apiKeys[providerId] ?? "";
+    const keyValidation = validateProviderApiKey(providerId, providerApiKey);
     if (!keyValidation.success) {
       const savedAgentMessage = await addMessage({
         threadId,
         role: "agent",
-        content: `Missing OpenRouter key. Open Settings and add your key.\n\n${OPENROUTER_API_KEY_HINT}`,
+        content: `Missing ${providerLabel} key. Open Settings and add your key.\n\n${getProviderApiKeyHint(providerId)}`,
         mode: "build",
         model: state.selectedModel.id,
         provider: state.selectedModel.provider,
@@ -161,8 +165,9 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
 
     setIsGenerating(true);
     try {
-      const text = await streamOpenRouterText({
-        apiKey: state.settings.openRouterApiKey,
+      const text = await streamProviderText({
+        providerId,
+        apiKey: providerApiKey,
         modelId: state.selectedModel.id,
         messages: threadMessages,
         workspacePath: activeWorkspacePath,

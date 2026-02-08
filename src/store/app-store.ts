@@ -10,7 +10,7 @@ export const initialState: AppState = {
   availableModels: mockModels,
   selectedModel: defaultModel,
   settings: {
-    openRouterApiKey: "",
+    apiKeys: {},
     window: {
       showWindowControls: true,
     },
@@ -44,7 +44,7 @@ export type AppAction =
     }
   | { type: "SET_ACTIVE_PROJECT"; projectId: string }
   | { type: "SET_AVAILABLE_MODELS"; models: ModelConfig[] }
-  | { type: "SET_OPENROUTER_API_KEY"; apiKey: string }
+  | { type: "SET_PROVIDER_API_KEY"; providerId: string; apiKey: string }
   | { type: "SET_MODELS_LOADING"; loading: boolean }
   | { type: "SET_MODELS_ERROR"; error: string | null }
   | { type: "SET_MODEL"; model: ModelConfig }
@@ -183,12 +183,15 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         selectedModel,
       };
     }
-    case "SET_OPENROUTER_API_KEY":
+    case "SET_PROVIDER_API_KEY":
       return {
         ...state,
         settings: {
           ...state.settings,
-          openRouterApiKey: action.apiKey,
+          apiKeys: {
+            ...state.settings.apiKeys,
+            [action.providerId]: action.apiKey,
+          },
         },
       };
     case "SET_MODELS_LOADING":

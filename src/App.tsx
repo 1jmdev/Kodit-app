@@ -8,7 +8,9 @@ import { HomePage } from "@/pages/HomePage";
 import { ChatPage } from "@/pages/ChatPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { loadStoredSettings } from "@/lib/settings-storage";
-import { fetchOpenRouterModels, validateOpenRouterApiKey } from "@/lib/openrouter";
+import { DEFAULT_PROVIDER_ID } from "@/lib/ai/providers";
+import { fetchProviderModels, validateProviderApiKey } from "@/lib/ai";
+import { loadAuthApiKeys } from "@/lib/auth/auth-storage";
 import {
   initializeStorage,
   listProjects,
@@ -110,17 +112,42 @@ function App() {
   }, [state.projects]);
 
   useEffect(() => {
-    const stored = loadStoredSettings();
-    if (stored.openRouterApiKey) {
-      dispatch({ type: "SET_OPENROUTER_API_KEY", apiKey: stored.openRouterApiKey });
+    let cancelled = false;
+
+    async function bootstrapSettings() {
+      const stored = loadStoredSettings();
+      const authKeys = await loadAuthApiKeys();
+
+      if (cancelled) {
+        return;
+      }
+
+      const mergedKeys = {
+        ...stored.apiKeys,
+        ...authKeys,
+      };
+
+      for (const [providerId, apiKey] of Object.entries(mergedKeys)) {
+        if (apiKey.trim()) {
+          dispatch({ type: "SET_PROVIDER_API_KEY", providerId, apiKey: apiKey.trim() });
+        }
+      }
+
+      if (stored.window) {
+        dispatch({ type: "SET_WINDOW_SETTINGS", settings: stored.window });
+      }
     }
-    if (stored.window) {
-      dispatch({ type: "SET_WINDOW_SETTINGS", settings: stored.window });
-    }
+
+    void bootstrapSettings();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    const validation = validateOpenRouterApiKey(state.settings.openRouterApiKey);
+    const activeProviderApiKey = state.settings.apiKeys[DEFAULT_PROVIDER_ID] ?? "";
+    const validation = validateProviderApiKey(DEFAULT_PROVIDER_ID, activeProviderApiKey);
     if (!validation.success) {
       return;
     }
@@ -132,7 +159,7 @@ function App() {
       dispatch({ type: "SET_MODELS_ERROR", error: null });
 
       try {
-        const models = await fetchOpenRouterModels(state.settings.openRouterApiKey);
+        const models = await fetchProviderModels(DEFAULT_PROVIDER_ID, activeProviderApiKey);
         if (!cancelled) {
           dispatch({ type: "SET_AVAILABLE_MODELS", models });
         }
@@ -153,7 +180,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [state.settings.openRouterApiKey]);
+  }, [state.settings.apiKeys]);
 
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>

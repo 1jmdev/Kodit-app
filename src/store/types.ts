@@ -84,6 +84,7 @@ export interface Project {
 export interface ModelConfig {
   id: string;
   name: string;
+  providerId: string;
   provider: string;
   qualityLevel: "Low" | "Medium" | "High" | "Extra High";
 }
@@ -93,7 +94,7 @@ export interface WindowSettings {
 }
 
 export interface SettingsConfig {
-  openRouterApiKey: string;
+  apiKeys: Record<string, string>;
   window: WindowSettings;
 }
 

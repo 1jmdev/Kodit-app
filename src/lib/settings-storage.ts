@@ -7,7 +7,7 @@ const windowSettingsSchema = z.object({
 });
 
 const settingsSchema = z.object({
-  openRouterApiKey: z.string().default(""),
+  apiKeys: z.record(z.string(), z.string()).default({}),
   window: windowSettingsSchema.default({
     showWindowControls: true,
   }),
@@ -20,7 +20,7 @@ export const defaultWindowSettings = {
 };
 
 const defaultSettings: StoredSettings = {
-  openRouterApiKey: "",
+  apiKeys: {},
   window: defaultWindowSettings,
 };
 
@@ -41,9 +41,26 @@ export function loadStoredSettings(): StoredSettings {
     return defaultSettings;
   }
 
+  const legacySchema = z.object({
+    openRouterApiKey: z.string().optional(),
+    window: windowSettingsSchema.optional(),
+  });
+
   const parsed = settingsSchema.safeParse(json);
   if (!parsed.success) {
-    return defaultSettings;
+    const legacy = legacySchema.safeParse(json);
+    if (!legacy.success) {
+      return defaultSettings;
+    }
+
+    return {
+      apiKeys: legacy.data.openRouterApiKey
+        ? {
+            openrouter: legacy.data.openRouterApiKey,
+          }
+        : {},
+      window: legacy.data.window ?? defaultWindowSettings,
+    };
   }
 
   return parsed.data;

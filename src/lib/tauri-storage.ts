@@ -67,6 +67,14 @@ export interface AgentRunCommandResult {
   timedOut: boolean;
 }
 
+interface BackendAuthConfig {
+  api_keys: Record<string, string>;
+}
+
+export interface AuthConfig {
+  apiKeys: Record<string, string>;
+}
+
 function mapProject(project: BackendProject): Project {
   return {
     id: project.id,
@@ -284,5 +292,24 @@ export async function agentRunCommand(params: {
     stdout: result.stdout,
     stderr: result.stderr,
     timedOut: result.timed_out,
+  };
+}
+
+export async function readAuthConfig(): Promise<AuthConfig> {
+  const config = await invoke<BackendAuthConfig>("read_auth_config");
+  return {
+    apiKeys: config.api_keys ?? {},
+  };
+}
+
+export async function writeAuthConfig(config: AuthConfig): Promise<AuthConfig> {
+  const next = await invoke<BackendAuthConfig>("write_auth_config", {
+    input: {
+      api_keys: config.apiKeys,
+    },
+  });
+
+  return {
+    apiKeys: next.api_keys ?? {},
   };
 }
