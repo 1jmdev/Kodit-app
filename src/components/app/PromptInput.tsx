@@ -203,6 +203,7 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
         modelId: state.selectedModel.id,
         messages: threadMessages,
         workspacePath: activeWorkspacePath,
+        initialTodos: currentThread?.todos ?? [],
         onChunk: (chunk) => {
           dispatch({
             type: "UPDATE_MESSAGE",
@@ -232,11 +233,9 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
         },
         onTodos: (todos) => {
           dispatch({
-            type: "UPDATE_MESSAGE",
+            type: "SET_THREAD_TODOS",
             threadId: threadId!,
-            messageId: assistantMessageId,
             todos,
-            isStreaming: true,
           });
         },
       });
@@ -252,6 +251,12 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
         model: state.selectedModel.id,
         provider: state.selectedModel.provider,
         parentId: userMessage.id,
+      });
+
+      dispatch({
+        type: "SET_THREAD_TODOS",
+        threadId,
+        todos: streamResult.todos,
       });
 
       dispatch({

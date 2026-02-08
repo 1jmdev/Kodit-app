@@ -4,6 +4,7 @@ import { useAppStore } from "@/store/app-store";
 import { ChatView } from "@/components/app/ChatView";
 import { DiffPanel } from "@/components/app/DiffPanel";
 import { TopBar } from "@/components/app/TopBar";
+import { ThreadTodoBar } from "@/components/app/ThreadTodoBar";
 import { PromptInput } from "@/components/app/PromptInput";
 import {
   ResizablePanelGroup,
@@ -30,6 +31,7 @@ export function ChatPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <TopBar />
+      <ThreadTodoBar />
       <div className="flex-1 overflow-hidden">
         {showDiff ? (
           <ResizablePanelGroup direction="horizontal">

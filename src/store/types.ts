@@ -88,6 +88,7 @@ export interface Thread {
   title: string;
   projectId: string;
   messages: Message[];
+  todos: TodoItem[];
   fileChanges: FileChange[];
   createdAt: number;
   updatedAt: number;

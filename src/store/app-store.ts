@@ -40,6 +40,7 @@ export type AppAction =
   | { type: "SET_ACTIVE_THREAD"; threadId: string | null }
   | { type: "DELETE_THREAD"; threadId: string }
   | { type: "ADD_MESSAGE"; threadId: string; message: Message }
+  | { type: "SET_THREAD_TODOS"; threadId: string; todos: TodoItem[] }
   | {
       type: "UPDATE_MESSAGE";
       threadId: string;
@@ -144,6 +145,15 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ),
       };
     }
+    case "SET_THREAD_TODOS":
+      return {
+        ...state,
+        threads: state.threads.map((t) =>
+          t.id === action.threadId
+            ? { ...t, todos: action.todos }
+            : t
+        ),
+      };
     case "UPDATE_MESSAGE": {
       return {
         ...state,

@@ -249,6 +249,7 @@ function mapThread(thread: BackendThread): Thread {
     createdAt: thread.created_at_ms,
     updatedAt: thread.updated_at_ms,
     messages: [],
+    todos: [],
     fileChanges: [],
     totalAdditions: 0,
     totalDeletions: 0,

@@ -6,13 +6,15 @@ import { createTodoReadTool } from "@/lib/ai/tools/todo-read";
 import { createQuestionTool } from "@/lib/ai/tools/question";
 import { createTodoStore } from "@/lib/ai/tools/todo-store";
 import type { TodoStore } from "@/lib/ai/tools/todo-store";
+import type { TodoItem } from "@/lib/ai/tools/todo-store";
 
 export interface WorkspaceToolsContext {
   todoStore: TodoStore;
 }
 
-export function createWorkspaceTools(workspacePath: string) {
+export function createWorkspaceTools(workspacePath: string, initialTodos: TodoItem[] = []) {
   const todoStore = createTodoStore();
+  todoStore.set(initialTodos);
 
   const tools = {
     read_file: createReadFileTool(workspacePath),

@@ -19,6 +19,7 @@ interface StreamTextParams {
   modelId: string;
   messages: Message[];
   workspacePath: string;
+  initialTodos?: TodoItem[];
   onChunk: (chunk: string) => void;
   onReasoning?: (reasoning: string) => void;
   onToolCalls?: (toolCalls: ToolCall[]) => void;
@@ -50,6 +51,7 @@ export async function streamProviderText({
   modelId,
   messages,
   workspacePath,
+  initialTodos = [],
   onChunk,
   onReasoning,
   onToolCalls,
@@ -81,7 +83,7 @@ export async function streamProviderText({
     emitToolCalls();
   }
 
-  const { tools, context } = createWorkspaceTools(workspacePath);
+  const { tools, context } = createWorkspaceTools(workspacePath, initialTodos);
 
   const agent = new ToolLoopAgent({
     model: providerPreset.createModel(apiKey, modelId),

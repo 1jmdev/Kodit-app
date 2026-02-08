@@ -73,9 +73,13 @@ function App() {
             return Promise.all(
               threads.map(async (thread) => {
                 const messages = await listMessages(thread.id);
+                const latestTodos = [...messages]
+                  .reverse()
+                  .find((message) => (message.todos?.length ?? 0) > 0)?.todos ?? [];
                 return {
                   ...thread,
                   messages,
+                  todos: latestTodos,
                   updatedAt: messages.length > 0 ? messages[messages.length - 1].timestamp : thread.updatedAt,
                 };
               }),
