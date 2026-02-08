@@ -1,5 +1,14 @@
 import { createContext, useContext } from "react";
-import type { AppState, Thread, Message, ModelConfig, WindowSettings, TodoItem, Question } from "./types";
+import type {
+  AppState,
+  Thread,
+  Message,
+  ModelConfig,
+  WindowSettings,
+  TodoItem,
+  Question,
+  FileChange,
+} from "./types";
 import { mockModels, defaultModel } from "./mock-data";
 
 function getModelKey(model: ModelConfig): string {
@@ -35,6 +44,15 @@ export type AppAction =
   | { type: "SET_PROJECTS"; projects: AppState["projects"] }
   | { type: "SET_THREADS"; threads: Thread[] }
   | { type: "SET_THREAD_MESSAGES"; threadId: string; messages: Message[] }
+  | {
+      type: "SET_THREAD_DIFF_STATE";
+      threadId: string;
+      fileChanges: FileChange[];
+      totalAdditions: number;
+      totalDeletions: number;
+      unstagedCount: number;
+      stagedCount: number;
+    }
   | { type: "UPSERT_THREAD"; thread: Thread }
   | { type: "REPLACE_MESSAGE"; threadId: string; messageId: string; nextMessage: Message }
   | { type: "SET_ACTIVE_THREAD"; threadId: string | null }
@@ -88,6 +106,22 @@ export function appReducer(state: AppState, action: AppAction): AppState {
                   action.messages.length > 0
                     ? action.messages[action.messages.length - 1].timestamp
                     : thread.updatedAt,
+              }
+            : thread,
+        ),
+      };
+    case "SET_THREAD_DIFF_STATE":
+      return {
+        ...state,
+        threads: state.threads.map((thread) =>
+          thread.id === action.threadId
+            ? {
+                ...thread,
+                fileChanges: action.fileChanges,
+                totalAdditions: action.totalAdditions,
+                totalDeletions: action.totalDeletions,
+                unstagedCount: action.unstagedCount,
+                stagedCount: action.stagedCount,
               }
             : thread,
         ),

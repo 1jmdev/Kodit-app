@@ -12,14 +12,22 @@ export interface WorkspaceToolsContext {
   todoStore: TodoStore;
 }
 
-export function createWorkspaceTools(workspacePath: string, initialTodos: TodoItem[] = []) {
+interface CreateWorkspaceToolsOptions {
+  initialTodos?: TodoItem[];
+  threadId?: string;
+}
+
+export function createWorkspaceTools(
+  workspacePath: string,
+  { initialTodos = [], threadId }: CreateWorkspaceToolsOptions = {},
+) {
   const todoStore = createTodoStore();
   todoStore.set(initialTodos);
 
   const tools = {
     read_file: createReadFileTool(workspacePath),
     shell: createShellTool(workspacePath),
-    edit: createEditTool(workspacePath),
+    edit: createEditTool(workspacePath, { threadId }),
     todo_write: createTodoWriteTool(todoStore),
     todo_read: createTodoReadTool(todoStore),
     question: createQuestionTool(),

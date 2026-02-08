@@ -16,7 +16,9 @@ import {
   listProjects,
   listThreads,
   listMessages,
+  listDiffs,
 } from "@/lib/tauri-storage";
+import { buildThreadDiffStats } from "@/lib/diff-utils";
 
 function App() {
   const [state, dispatch] = useReducer(appReducer, initialState);
@@ -73,6 +75,8 @@ function App() {
             return Promise.all(
               threads.map(async (thread) => {
                 const messages = await listMessages(thread.id);
+                const diffs = await listDiffs(thread.id);
+                const diffStats = buildThreadDiffStats(diffs);
                 const latestTodos = [...messages]
                   .reverse()
                   .find((message) => (message.todos?.length ?? 0) > 0)?.todos ?? [];
@@ -80,6 +84,11 @@ function App() {
                   ...thread,
                   messages,
                   todos: latestTodos,
+                  fileChanges: diffStats.fileChanges,
+                  totalAdditions: diffStats.totalAdditions,
+                  totalDeletions: diffStats.totalDeletions,
+                  unstagedCount: diffStats.unstagedCount,
+                  stagedCount: diffStats.stagedCount,
                   updatedAt: messages.length > 0 ? messages[messages.length - 1].timestamp : thread.updatedAt,
                 };
               }),

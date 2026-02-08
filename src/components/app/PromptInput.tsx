@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { getProviderApiKeyHint, streamProviderText, validateProviderApiKey } from "@/lib/ai";
 import { getProviderPreset } from "@/lib/ai/providers";
-import { addMessage, createProject, createThread } from "@/lib/tauri-storage";
+import { addMessage, createProject, createThread, listDiffs } from "@/lib/tauri-storage";
+import { buildThreadDiffStats } from "@/lib/diff-utils";
 import {
   getPendingQuestions,
   subscribePendingQuestions,
@@ -197,12 +198,29 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
 
     setIsGenerating(true);
     try {
+      let completedEditCount = 0;
+
+      const refreshThreadDiffs = async (targetThreadId: string) => {
+        const diffs = await listDiffs(targetThreadId);
+        const stats = buildThreadDiffStats(diffs);
+        dispatch({
+          type: "SET_THREAD_DIFF_STATE",
+          threadId: targetThreadId,
+          fileChanges: stats.fileChanges,
+          totalAdditions: stats.totalAdditions,
+          totalDeletions: stats.totalDeletions,
+          unstagedCount: stats.unstagedCount,
+          stagedCount: stats.stagedCount,
+        });
+      };
+
       const streamResult = await streamProviderText({
         providerId,
         apiKey: providerApiKey,
         modelId: state.selectedModel.id,
         messages: threadMessages,
         workspacePath: activeWorkspacePath,
+        threadId,
         initialTodos: currentThread?.todos ?? [],
         onChunk: (chunk) => {
           dispatch({
@@ -230,6 +248,17 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
             toolCalls,
             isStreaming: true,
           });
+
+          const hasCompletedEdit = toolCalls.some(
+            (toolCall) => toolCall.status === "completed" && toolCall.name.startsWith("Edited "),
+          );
+          const nextCompletedEditCount = toolCalls.filter(
+            (toolCall) => toolCall.status === "completed" && toolCall.name.startsWith("Edited "),
+          ).length;
+          if (hasCompletedEdit && nextCompletedEditCount > completedEditCount) {
+            completedEditCount = nextCompletedEditCount;
+            void refreshThreadDiffs(threadId!);
+          }
         },
         onTodos: (todos) => {
           dispatch({
@@ -265,6 +294,7 @@ export function PromptInput({ variant = "chat", placeholder, pendingProject, onP
         messageId: assistantMessageId,
         nextMessage: savedAgentMessage,
       });
+      await refreshThreadDiffs(threadId);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to stream response.";
       const savedAgentMessage = await addMessage({

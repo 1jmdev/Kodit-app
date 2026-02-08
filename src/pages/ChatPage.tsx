@@ -49,7 +49,9 @@ export function ChatPage() {
 
             {/* Diff panel */}
             <ResizablePanel defaultSize={45} minSize={25}>
-              <DiffPanel />
+              <div className="h-full min-h-0">
+                <DiffPanel />
+              </div>
             </ResizablePanel>
           </ResizablePanelGroup>
         ) : (

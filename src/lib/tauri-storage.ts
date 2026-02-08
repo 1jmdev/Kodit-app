@@ -44,6 +44,24 @@ interface BackendMessage {
   sequence: number;
 }
 
+type BackendFileChangeType = "created" | "modified" | "deleted";
+
+interface BackendFileSnapshotChange {
+  file_path: string;
+  change_type: BackendFileChangeType;
+  old_content?: string | null;
+  new_content?: string | null;
+}
+
+interface BackendDiffRecord {
+  id: string;
+  thread_id: string;
+  message_id?: string | null;
+  summary?: string | null;
+  created_at_ms: number;
+  files: BackendFileSnapshotChange[];
+}
+
 interface PersistedMessageMetadata {
   version: 1;
   reasoning?: string;
@@ -214,6 +232,11 @@ export interface AgentWriteFileResult {
   bytesWritten: number;
 }
 
+export interface AgentDeleteFileResult {
+  path: string;
+  deleted: boolean;
+}
+
 export interface AgentRunCommandResult {
   command: string;
   workdir: string;
@@ -229,6 +252,24 @@ interface BackendAuthConfig {
 
 export interface AuthConfig {
   apiKeys: Record<string, string>;
+}
+
+export type FileChangeType = BackendFileChangeType;
+
+export interface FileSnapshotChange {
+  filePath: string;
+  changeType: FileChangeType;
+  oldContent?: string | null;
+  newContent?: string | null;
+}
+
+export interface DiffRecord {
+  id: string;
+  threadId: string;
+  messageId?: string | null;
+  summary?: string | null;
+  createdAt: number;
+  files: FileSnapshotChange[];
 }
 
 function mapProject(project: BackendProject): Project {
@@ -281,6 +322,22 @@ function mapMessage(message: BackendMessage): Message {
     toolCalls: decoded.metadata?.toolCalls,
     todos: decoded.metadata?.todos,
     questions: decoded.metadata?.questions,
+  };
+}
+
+function mapDiffRecord(diff: BackendDiffRecord): DiffRecord {
+  return {
+    id: diff.id,
+    threadId: diff.thread_id,
+    messageId: diff.message_id ?? null,
+    summary: diff.summary ?? null,
+    createdAt: diff.created_at_ms,
+    files: diff.files.map((file) => ({
+      filePath: file.file_path,
+      changeType: file.change_type,
+      oldContent: file.old_content ?? null,
+      newContent: file.new_content ?? null,
+    })),
   };
 }
 
@@ -388,6 +445,41 @@ export async function addMessage(params: {
   return mapMessage(message);
 }
 
+export async function saveDiff(params: {
+  threadId: string;
+  messageId?: string | null;
+  summary?: string | null;
+  files: Array<{
+    filePath: string;
+    oldContent?: string | null;
+    newContent?: string | null;
+  }>;
+}): Promise<DiffRecord> {
+  const diff = await invoke<BackendDiffRecord>("save_diff", {
+    input: {
+      thread_id: params.threadId,
+      message_id: params.messageId ?? null,
+      summary: params.summary ?? null,
+      files: params.files.map((file) => ({
+        file_path: file.filePath,
+        old_content: file.oldContent ?? null,
+        new_content: file.newContent ?? null,
+      })),
+    },
+  });
+
+  return mapDiffRecord(diff);
+}
+
+export async function listDiffs(threadId: string): Promise<DiffRecord[]> {
+  const diffs = await invoke<BackendDiffRecord[]>("list_diffs", { threadId });
+  return diffs.map(mapDiffRecord);
+}
+
+export async function clearDiffs(threadId: string): Promise<void> {
+  await invoke("clear_diffs", { threadId });
+}
+
 export async function agentReadFile(params: {
   workspacePath: string;
   path: string;
@@ -437,6 +529,26 @@ export async function agentWriteFile(params: {
   return {
     path: result.path,
     bytesWritten: result.bytes_written,
+  };
+}
+
+export async function agentDeleteFile(params: {
+  workspacePath: string;
+  path: string;
+  allowMissing?: boolean;
+}): Promise<AgentDeleteFileResult> {
+  const result = await invoke<{
+    path: string;
+    deleted: boolean;
+  }>("agent_delete_file", {
+    workspacePath: params.workspacePath,
+    path: params.path,
+    allowMissing: params.allowMissing ?? true,
+  });
+
+  return {
+    path: result.path,
+    deleted: result.deleted,
   };
 }
 

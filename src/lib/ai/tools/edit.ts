@@ -1,13 +1,32 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { agentReadFile, agentWriteFile } from "@/lib/tauri-storage";
+import { agentReadFile, agentWriteFile, saveDiff } from "@/lib/tauri-storage";
 import DESCRIPTION from './edit.txt';
 
 function normalizeNewlines(text: string): string {
   return text.replace(/\r\n/g, "\n");
 }
 
-export function createEditTool(workspacePath: string) {
+interface CreateEditToolOptions {
+  threadId?: string;
+}
+
+export function createEditTool(workspacePath: string, options: CreateEditToolOptions = {}) {
+  async function recordDiff(path: string, oldContent: string, newContent: string) {
+    if (!options.threadId) {
+      return;
+    }
+    try {
+      await saveDiff({
+        threadId: options.threadId,
+        summary: `Edited ${path}`,
+        files: [{ filePath: path, oldContent, newContent }],
+      });
+    } catch {
+      // Do not fail the edit after the file has already been written.
+    }
+  }
+
   return tool({
     description: DESCRIPTION,
     inputSchema: z.object({
@@ -47,6 +66,7 @@ export function createEditTool(workspacePath: string) {
         }
         const updated = content.split(normalizedOld).join(normalizedNew);
         await agentWriteFile({ workspacePath, path, content: updated, createDirs: false });
+        await recordDiff(path, content, updated);
         return { ok: true, path };
       }
 
@@ -69,6 +89,7 @@ export function createEditTool(workspacePath: string) {
         content.slice(0, firstIndex) + normalizedNew + content.slice(firstIndex + normalizedOld.length);
 
       await agentWriteFile({ workspacePath, path, content: updated, createDirs: false });
+      await recordDiff(path, content, updated);
       return { ok: true, path };
     },
   });

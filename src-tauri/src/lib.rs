@@ -491,6 +491,21 @@ fn list_diffs(app: AppHandle, thread_id: String) -> Result<Vec<DiffRecord>, Stri
 }
 
 #[tauri::command]
+fn clear_diffs(app: AppHandle, thread_id: String) -> Result<(), String> {
+    let root = storage_root(&app)?;
+    ensure_storage_ready(&root)?;
+    let _thread = require_thread(&root, &thread_id)?;
+
+    let dir = thread_diffs_dir(&root, &thread_id);
+    if !dir.exists() {
+        return Ok(());
+    }
+
+    fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 fn read_auth_config(app: AppHandle) -> Result<AuthConfig, String> {
     let path = auth_config_path(&app)?;
     if !path.exists() {
@@ -531,6 +546,12 @@ pub struct AgentReadFileResult {
 pub struct AgentWriteFileResult {
     pub path: String,
     pub bytes_written: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AgentDeleteFileResult {
+    pub path: String,
+    pub deleted: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -724,6 +745,36 @@ fn agent_write_file(
 }
 
 #[tauri::command]
+fn agent_delete_file(
+    workspace_path: String,
+    path: String,
+    allow_missing: Option<bool>,
+) -> Result<AgentDeleteFileResult, String> {
+    let workspace_root = canonicalize_workspace(&workspace_path)?;
+    let resolved = resolve_path_in_workspace(&workspace_root, &path, true)?;
+
+    if !resolved.exists() {
+        if allow_missing.unwrap_or(true) {
+            return Ok(AgentDeleteFileResult {
+                path: resolved.to_string_lossy().to_string(),
+                deleted: false,
+            });
+        }
+        return Err("Path does not exist".to_string());
+    }
+
+    if !resolved.is_file() {
+        return Err("Path is not a file".to_string());
+    }
+
+    fs::remove_file(&resolved).map_err(|e| e.to_string())?;
+    Ok(AgentDeleteFileResult {
+        path: resolved.to_string_lossy().to_string(),
+        deleted: true,
+    })
+}
+
+#[tauri::command]
 fn agent_run_command(
     workspace_path: String,
     command: String,
@@ -757,11 +808,13 @@ pub fn run() {
             list_messages,
             save_diff,
             list_diffs,
+            clear_diffs,
             read_auth_config,
             write_auth_config,
             pick_folder,
             agent_read_file,
             agent_write_file,
+            agent_delete_file,
             agent_run_command
         ])
         .run(tauri::generate_context!())
