@@ -1,4 +1,4 @@
-import { memo, useRef, useEffect, useLayoutEffect, useMemo } from "react";
+import { memo, useRef, useEffect, useLayoutEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useAppStore } from "@/store/app-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,6 +12,7 @@ import {
   Undo2,
   Brain,
 } from "lucide-react";
+import { MarkdownRenderer } from "@/components/markdown";
 
 const ToolCallItem = memo(function ToolCallItem({ toolCall }: { toolCall: ToolCall }) {
   return (
@@ -85,7 +86,6 @@ const FileEditSummary = memo(function FileEditSummary({ edits }: { edits: FileEd
 
 const MessageBubble = memo(function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
-  const paragraphs = useMemo(() => message.content.split("\n\n"), [message.content]);
 
   return (
     <div className={cn("max-w-none", isUser ? "flex justify-end" : "")}>
@@ -119,63 +119,7 @@ const MessageBubble = memo(function MessageBubble({ message }: { message: Messag
           "text-sm leading-relaxed",
           isUser ? "text-foreground" : "text-foreground/90"
         )}>
-          {paragraphs.map((paragraph, i) => {
-            // Check if it's a list
-            if (paragraph.startsWith("- ") || paragraph.startsWith("* ")) {
-              const items = paragraph.split("\n").filter(Boolean);
-              return (
-                <ul key={i} className="my-2 space-y-1 list-disc list-inside">
-                  {items.map((item, j) => (
-                    <li key={j} className="text-sm leading-relaxed">
-                      <span dangerouslySetInnerHTML={{
-                        __html: item
-                          .replace(/^[-*]\s+/, "")
-                          .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>')
-                          .replace(/`(.+?)`/g, '<code class="rounded bg-muted px-1 py-0.5 text-xs font-mono">$1</code>')
-                      }} />
-                    </li>
-                  ))}
-                </ul>
-              );
-            }
-
-            // Check for headers
-            if (paragraph.startsWith("**") && paragraph.endsWith("**")) {
-              return (
-                <h3 key={i} className="font-semibold text-foreground mt-4 mb-2">
-                  {paragraph.replace(/\*\*/g, "")}
-                </h3>
-              );
-            }
-
-            // Check for numbered list
-            if (/^\d+\./.test(paragraph)) {
-              const items = paragraph.split("\n").filter(Boolean);
-              return (
-                <ol key={i} className="my-2 space-y-1 list-decimal list-inside">
-                  {items.map((item, j) => (
-                    <li key={j} className="text-sm leading-relaxed">
-                      <span dangerouslySetInnerHTML={{
-                        __html: item
-                          .replace(/^\d+\.\s+/, "")
-                          .replace(/`(.+?)`/g, '<code class="rounded bg-muted px-1 py-0.5 text-xs font-mono">$1</code>')
-                      }} />
-                    </li>
-                  ))}
-                </ol>
-              );
-            }
-
-            return (
-              <p key={i} className={cn("my-2", i === 0 && "mt-0")}>
-                <span dangerouslySetInnerHTML={{
-                  __html: paragraph
-                    .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>')
-                    .replace(/`(.+?)`/g, '<code class="rounded bg-muted px-1 py-0.5 text-xs font-mono">$1</code>')
-                }} />
-              </p>
-            );
-          })}
+          <MarkdownRenderer content={message.content} />
           {message.isStreaming && !isUser && <span className="inline-block h-4 w-1 animate-pulse rounded-sm bg-foreground/70 align-middle" />}
         </div>
 

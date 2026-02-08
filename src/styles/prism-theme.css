@@ -1,0 +1,303 @@
+/*
+ * Scoped Prism themes — One Light for light mode, One Dark for dark mode.
+ * Only token colors and font-style/weight are kept; layout properties
+ * (background, padding, margin, border-radius, font-family) are handled
+ * by Tailwind classes on CodeBlock.tsx.
+ */
+
+/* ───── Light mode: One Light token colors ───── */
+
+:root:not(.dark) .token.comment,
+:root:not(.dark) .token.prolog,
+:root:not(.dark) .token.cdata {
+  color: hsl(230, 4%, 64%);
+}
+
+:root:not(.dark) .token.doctype,
+:root:not(.dark) .token.punctuation,
+:root:not(.dark) .token.entity {
+  color: hsl(230, 8%, 24%);
+}
+
+:root:not(.dark) .token.attr-name,
+:root:not(.dark) .token.class-name,
+:root:not(.dark) .token.boolean,
+:root:not(.dark) .token.constant,
+:root:not(.dark) .token.number,
+:root:not(.dark) .token.atrule {
+  color: hsl(35, 99%, 36%);
+}
+
+:root:not(.dark) .token.keyword {
+  color: hsl(301, 63%, 40%);
+}
+
+:root:not(.dark) .token.property,
+:root:not(.dark) .token.tag,
+:root:not(.dark) .token.symbol,
+:root:not(.dark) .token.deleted,
+:root:not(.dark) .token.important {
+  color: hsl(5, 74%, 59%);
+}
+
+:root:not(.dark) .token.selector,
+:root:not(.dark) .token.string,
+:root:not(.dark) .token.char,
+:root:not(.dark) .token.builtin,
+:root:not(.dark) .token.inserted,
+:root:not(.dark) .token.regex,
+:root:not(.dark) .token.attr-value,
+:root:not(.dark) .token.attr-value > .token.punctuation {
+  color: hsl(119, 34%, 47%);
+}
+
+:root:not(.dark) .token.variable,
+:root:not(.dark) .token.operator,
+:root:not(.dark) .token.function {
+  color: hsl(221, 87%, 60%);
+}
+
+:root:not(.dark) .token.url {
+  color: hsl(198, 99%, 37%);
+}
+
+:root:not(.dark) .token.attr-value > .token.punctuation.attr-equals,
+:root:not(.dark) .token.special-attr > .token.attr-value > .token.value.css {
+  color: hsl(230, 8%, 24%);
+}
+
+:root:not(.dark) .language-css .token.selector {
+  color: hsl(5, 74%, 59%);
+}
+
+:root:not(.dark) .language-css .token.property {
+  color: hsl(230, 8%, 24%);
+}
+
+:root:not(.dark) .language-css .token.function,
+:root:not(.dark) .language-css .token.url > .token.function {
+  color: hsl(198, 99%, 37%);
+}
+
+:root:not(.dark) .language-css .token.url > .token.string.url {
+  color: hsl(119, 34%, 47%);
+}
+
+:root:not(.dark) .language-css .token.important,
+:root:not(.dark) .language-css .token.atrule .token.rule {
+  color: hsl(301, 63%, 40%);
+}
+
+:root:not(.dark) .language-javascript .token.operator {
+  color: hsl(301, 63%, 40%);
+}
+
+:root:not(.dark) .language-javascript .token.template-string > .token.interpolation > .token.interpolation-punctuation.punctuation {
+  color: hsl(344, 84%, 43%);
+}
+
+:root:not(.dark) .language-json .token.operator {
+  color: hsl(230, 8%, 24%);
+}
+
+:root:not(.dark) .language-json .token.null.keyword {
+  color: hsl(35, 99%, 36%);
+}
+
+:root:not(.dark) .language-markdown .token.url,
+:root:not(.dark) .language-markdown .token.url > .token.operator,
+:root:not(.dark) .language-markdown .token.url-reference.url > .token.string {
+  color: hsl(230, 8%, 24%);
+}
+
+:root:not(.dark) .language-markdown .token.url > .token.content {
+  color: hsl(221, 87%, 60%);
+}
+
+:root:not(.dark) .language-markdown .token.url > .token.url,
+:root:not(.dark) .language-markdown .token.url-reference.url {
+  color: hsl(198, 99%, 37%);
+}
+
+:root:not(.dark) .language-markdown .token.blockquote.punctuation,
+:root:not(.dark) .language-markdown .token.hr.punctuation {
+  color: hsl(230, 4%, 64%);
+  font-style: italic;
+}
+
+:root:not(.dark) .language-markdown .token.code-snippet {
+  color: hsl(119, 34%, 47%);
+}
+
+:root:not(.dark) .language-markdown .token.bold .token.content {
+  color: hsl(35, 99%, 36%);
+}
+
+:root:not(.dark) .language-markdown .token.italic .token.content {
+  color: hsl(301, 63%, 40%);
+}
+
+:root:not(.dark) .language-markdown .token.strike .token.content,
+:root:not(.dark) .language-markdown .token.strike .token.punctuation,
+:root:not(.dark) .language-markdown .token.list.punctuation,
+:root:not(.dark) .language-markdown .token.title.important > .token.punctuation {
+  color: hsl(5, 74%, 59%);
+}
+
+/* ───── Dark mode: One Dark token colors ───── */
+
+.dark .token.comment,
+.dark .token.prolog,
+.dark .token.cdata {
+  color: hsl(220, 10%, 40%);
+}
+
+.dark .token.doctype,
+.dark .token.punctuation,
+.dark .token.entity {
+  color: hsl(220, 14%, 71%);
+}
+
+.dark .token.attr-name,
+.dark .token.class-name,
+.dark .token.boolean,
+.dark .token.constant,
+.dark .token.number,
+.dark .token.atrule {
+  color: hsl(29, 54%, 61%);
+}
+
+.dark .token.keyword {
+  color: hsl(286, 60%, 67%);
+}
+
+.dark .token.property,
+.dark .token.tag,
+.dark .token.symbol,
+.dark .token.deleted,
+.dark .token.important {
+  color: hsl(355, 65%, 65%);
+}
+
+.dark .token.selector,
+.dark .token.string,
+.dark .token.char,
+.dark .token.builtin,
+.dark .token.inserted,
+.dark .token.regex,
+.dark .token.attr-value,
+.dark .token.attr-value > .token.punctuation {
+  color: hsl(95, 38%, 62%);
+}
+
+.dark .token.variable,
+.dark .token.operator,
+.dark .token.function {
+  color: hsl(207, 82%, 66%);
+}
+
+.dark .token.url {
+  color: hsl(187, 47%, 55%);
+}
+
+.dark .token.attr-value > .token.punctuation.attr-equals,
+.dark .token.special-attr > .token.attr-value > .token.value.css {
+  color: hsl(220, 14%, 71%);
+}
+
+.dark .language-css .token.selector {
+  color: hsl(355, 65%, 65%);
+}
+
+.dark .language-css .token.property {
+  color: hsl(220, 14%, 71%);
+}
+
+.dark .language-css .token.function,
+.dark .language-css .token.url > .token.function {
+  color: hsl(187, 47%, 55%);
+}
+
+.dark .language-css .token.url > .token.string.url {
+  color: hsl(95, 38%, 62%);
+}
+
+.dark .language-css .token.important,
+.dark .language-css .token.atrule .token.rule {
+  color: hsl(286, 60%, 67%);
+}
+
+.dark .language-javascript .token.operator {
+  color: hsl(286, 60%, 67%);
+}
+
+.dark .language-javascript .token.template-string > .token.interpolation > .token.interpolation-punctuation.punctuation {
+  color: hsl(5, 48%, 51%);
+}
+
+.dark .language-json .token.operator {
+  color: hsl(220, 14%, 71%);
+}
+
+.dark .language-json .token.null.keyword {
+  color: hsl(29, 54%, 61%);
+}
+
+.dark .language-markdown .token.url,
+.dark .language-markdown .token.url > .token.operator,
+.dark .language-markdown .token.url-reference.url > .token.string {
+  color: hsl(220, 14%, 71%);
+}
+
+.dark .language-markdown .token.url > .token.content {
+  color: hsl(207, 82%, 66%);
+}
+
+.dark .language-markdown .token.url > .token.url,
+.dark .language-markdown .token.url-reference.url {
+  color: hsl(187, 47%, 55%);
+}
+
+.dark .language-markdown .token.blockquote.punctuation,
+.dark .language-markdown .token.hr.punctuation {
+  color: hsl(220, 10%, 40%);
+  font-style: italic;
+}
+
+.dark .language-markdown .token.code-snippet {
+  color: hsl(95, 38%, 62%);
+}
+
+.dark .language-markdown .token.bold .token.content {
+  color: hsl(29, 54%, 61%);
+}
+
+.dark .language-markdown .token.italic .token.content {
+  color: hsl(286, 60%, 67%);
+}
+
+.dark .language-markdown .token.strike .token.content,
+.dark .language-markdown .token.strike .token.punctuation,
+.dark .language-markdown .token.list.punctuation,
+.dark .language-markdown .token.title.important > .token.punctuation {
+  color: hsl(355, 65%, 65%);
+}
+
+/* ───── Shared: font-style / font-weight ───── */
+
+.token.bold {
+  font-weight: bold;
+}
+
+.token.comment,
+.token.italic {
+  font-style: italic;
+}
+
+.token.entity {
+  cursor: help;
+}
+
+.token.namespace {
+  opacity: 0.8;
+}
